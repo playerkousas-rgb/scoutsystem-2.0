@@ -148,6 +148,9 @@ export function apiCreateUser(p: { name: string; email: string; password?: strin
 export function apiUpdateUserRole(userId: string, role: string) {
   return apiMutate('updateUserRole', { userId, role });
 }
+export function apiDeleteUser(userId: string) {
+  return apiMutate('deleteUser', { userId });
+}
 
 // ==================== 小隊 / 六 ====================
 

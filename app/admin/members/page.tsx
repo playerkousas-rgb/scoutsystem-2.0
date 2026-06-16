@@ -83,8 +83,8 @@ export default function Page(){
     {showAdd&&<section className="card stack"><h3>新增成員</h3>
       <div className="grid">
         <input value={name} onChange={e=>setName(e.target.value)} placeholder="姓名 *"/>
-        <input value={ym} onChange={e=>setYm(e.target.value)} placeholder="YMIS（10位數字）*"/>
-        <input value={memberPw} onChange={e=>setMemberPw(e.target.value)} placeholder="登入密碼（預設=YMIS）"/>
+        <input value={ym} onChange={e=>setYm(e.target.value)} placeholder="YMIS / 成員編號 *"/>
+        <input value={memberPw} onChange={e=>setMemberPw(e.target.value)} placeholder="登入密碼（預設=編號）"/>
         <select value={branch} onChange={e=>{setBranch(e.target.value);setPatrol('')}}>{branches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select>
         <select value={patrol} onChange={e=>setPatrol(e.target.value)}><option value="">不適用 / 未分隊</option>{s.patrols.filter(p=>p.branchId===branch&&p.enabled).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>
         <input type="date" value={dob} onChange={e=>setDob(e.target.value)} placeholder="出生日期"/>

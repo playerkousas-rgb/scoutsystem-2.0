@@ -99,8 +99,7 @@ function getInitialSheets_() {
       ['ADMIN_EMAIL', '', '必填：第一位管理員 Email。setup 後會自動建立 admin 帳號（預設密碼 changeme）。'],
       ['ADMIN_DEFAULT_PASSWORD', 'changeme', '初始管理員預設密碼，登入後請修改。'],
       ['FRONTEND_URL', 'https://scoutsystem2.vercel.app/', '前端 Vercel 網址。預設是官方部署，如有自己部署的 URL 請更換。'],
-      ['ANNOUNCEMENT_FOLDER_ID', '', '公告 PDF 的 Google Drive 資料夾 ID。取得方式：打開 Drive 資料夾，看網址 https://drive.google.com/drive/folders/XXXX，XXXX 就是 ID。此資料夾必須設為「知道連結的人都可檢視」。'],
-      ['ANNOUNCEMENT_FOLDER_URL', '', '公告 PDF 的 Google Drive 資料夾完整網址（https://drive.google.com/drive/folders/XXXX）。跟 ID 是同一個資料夾，只是這裡存完整 URL 給前端顯示。'],
+      ['ANNOUNCEMENT_FOLDER_ID', '', '公告 PDF 的 Google Drive 資料夾 ID。取得方式：打開 Drive 資料夾，看網址 https://drive.google.com/drive/folders/XXXX，XXXX 就是 ID。資料夾需設為「知道連結的人都可檢視」。'],
       ['WEB_APP_URL', '', 'Apps Script /exec URL（Deploy 後填入）。'],
       ['REGISTRY_URL', 'https://troop-router.vercel.app/api/registry.json', '轉駁器 registry。'],
       ['TECH_TEST_ACCOUNTS', 'sheep,0728', '技術測試帳號，權限等同最高。'],
@@ -220,7 +219,7 @@ function setupReadmeSheet_(ss) {
     ['4', '到藍色 Members 輸入成員。每個必須填 ymNumber（10位數字）和 password（密碼）。範例已提供兩行。'],
     ['5', '到灰色 Users 確認管理員 email（如 setup 時未填 ADMIN_EMAIL）。預設密碼 changeme。'],
     ['6', '回到此 Apps Script 編輯器 → 右上方「部署」→「網頁應用程式」→ 執行身分：我 → 誰可以存取：任何人 → 部署。'],
-    ['7', '複製部署後的 /exec 網址，填入前端首頁旅團連接設定。'],
+    ['7', '複製部署後的 /exec 網址，提交旅團接入申請（/onboard）。'],
     ['8', '在前端用管理員 email + changeme 登入；或用 STAFF_TOKEN。'],
     ['', ''],
     ['權限設定（重要！）', ''],
@@ -806,6 +805,7 @@ function doGet(e) {
       case 'decideApplication': return wrap_(handleDecideApplication_(p), p);
       case 'toggleUser': return wrap_(handleToggleUser_(p), p);
       case 'updateUserRole': return wrap_(handleUpdateUserRole_(p), p);
+      case 'deleteUser': return wrap_(handleDeleteUser_(p), p);
       case 'createUser': return wrap_(handleCreateUser_(p), p);
       case 'createPatrol': return wrap_(handleCreatePatrol_(p), p);
       case 'togglePatrol': return wrap_(handleTogglePatrol_(p), p);
@@ -1264,6 +1264,14 @@ function handleCreateUser_(p) {
 function handleUpdateUserRole_(p) {
   updateCellByName_('Users', 'userId', p.userId, 'role', p.role || 'member');
   writeAudit_(p.operatedBy || 'system', 'updateUserRole', 'Users', p.userId, 'role=' + (p.role || ''));
+  return { success: true };
+}
+
+function handleDeleteUser_(p) {
+  var idx = findRowIndexById_('Users', 'userId', p.userId);
+  if (idx < 0) return { success: false, error: '找不到使用者' };
+  getSheet_('Users').deleteRow(idx + 1);
+  writeAudit_(p.operatedBy || 'system', 'deleteUser', 'Users', p.userId, '');
   return { success: true };
 }
 

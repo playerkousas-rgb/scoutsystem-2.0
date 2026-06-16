@@ -3,9 +3,9 @@
 // 用戶只能看到旅團名稱，看不到後台 URL
 
 export type ApprovedTroop = {
-  id: string;        // 旅團號
-  name: string;      // 顯示名稱
-  webAppUrl: string;  // Apps Script URL（隱藏，用戶看不到）
+  id: string;
+  name: string;
+  webAppUrl: string;
   status: 'active' | 'testing';
   note?: string;
 };
@@ -14,9 +14,16 @@ export const APPROVED_TROOPS: ApprovedTroop[] = [
   {
     id: '0082',
     name: '第82旅',
+    webAppUrl: 'https://script.google.com/macros/s/AKfycbypJw25bnKxDwYoSZBTWHjq2BIQ_eC4PVdS1MDSLlT7m6SZRUHX1MihkQcSAO8_Kq2F/exec',
+    status: 'testing',
+    note: '測試旅團（舊）',
+  },
+  {
+    id: '0082',
+    name: '第82旅（新測試）',
     webAppUrl: 'https://script.google.com/macros/s/AKfycbwATtCXH8t8bV5VOBVY-ocPJR1RgV4iQebJp_oo_NGV7-90xJZ0d4pAVlFf_f51FHYW/exec',
     status: 'testing',
-    note: '測試旅團',
+    note: '新部署測試',
   },
   // 新旅團接入後在這裡加入，格式：
   // { id: '0083', name: '第83旅', webAppUrl: 'https://script.google.com/...', status: 'active' },

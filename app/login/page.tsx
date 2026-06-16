@@ -84,11 +84,11 @@ export default function Login() {
           </label>
         ) : (
           <>
-            <label>{tab === 'member' ? 'YMIS 成員編號（10位數字）' : 'Email'}
-              <input value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder={tab === 'member' ? '1234567890' : 'your@email.com'} />
+            <label>{tab === 'member' ? 'YMIS / 成員編號' : 'Email'}
+              <input value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder={tab === 'member' ? '例如：1234567890 或 2501' : 'your@email.com'} />
             </label>
             <label>密碼
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={tab === 'member' ? '成員密碼（Members 表的 password）' : '密碼'} />
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="密碼" />
             </label>
           </>
         )}
