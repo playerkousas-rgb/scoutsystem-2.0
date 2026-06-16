@@ -20,11 +20,8 @@ export default function Login() {
   async function submit() {
     setMsg('');
     if (!troop?.webAppUrl) { setMsg('請先在首頁連接旅團。'); return; }
-    if (tab === 'staffToken') {
-      if (!password) { setMsg('請填 STAFF_TOKEN。'); return; }
-    } else {
-      if (!identifier.trim()) { setMsg('請填入登入資料。'); return; }
-    }
+    if (!identifier.trim() && tab !== 'staffToken') { setMsg('請填入登入資料。'); return; }
+    if (tab === 'staffToken' && !password) { setMsg('請填 STAFF_TOKEN。'); return; }
     setLoading(true);
     try {
       const url = new URL(troop.webAppUrl);
@@ -40,7 +37,7 @@ export default function Login() {
       }
       const res = await fetch(url.toString(), { cache: 'no-store' });
       const text = await res.text();
-      if (/Access Denied|<html|<!doctype/i.test(text)) throw new Error('Apps Script Access Denied，請確認 Deploy → Anyone。');
+      if (/Access Denied|<html|<!doctype/i.test(text)) throw new Error('Apps Script Access Denied，請確認 Deploy → 任何人。');
       const data = JSON.parse(text);
       if (!data.success) throw new Error(data.error || '登入失敗');
       const u = data.user;
@@ -71,12 +68,12 @@ export default function Login() {
       <section className="hero">
         <span className="badge gold">登入 {troop.name}</span>
         <h1>登入旅團</h1>
-        <p>領袖 / 家長 / 管理員用 Email + 密碼。成員用 YMIS 10位數字。首次管理員可用 STAFF_TOKEN。</p>
+        <p>領袖 / 家長 / 管理員用 Email + 密碼。成員用 YMIS + 密碼。首次管理員可用 STAFF_TOKEN。</p>
         <Link className="btn" href="/apply">未有帳號？申請加入</Link>
       </section>
       <section className="card stack">
         <div className="row">
-          <button className={`btn ${tab === 'account' ? 'primary' : ''}`} onClick={() => { setTab('account'); setIdentifier(''); setPassword(''); }}>領袖及家長</button>
+          <button className={`btn ${tab === 'account' ? 'primary' : ''}`} onClick={() => { setTab('account'); setIdentifier(''); setPassword(''); }}>領袖 / 家長</button>
           <button className={`btn ${tab === 'member' ? 'primary' : ''}`} onClick={() => { setTab('member'); setIdentifier(''); setPassword(''); }}>成員 YMIS</button>
           <button className={`btn ${tab === 'staffToken' ? 'primary' : ''}`} onClick={() => { setTab('staffToken'); setIdentifier(''); setPassword(''); }}>STAFF_TOKEN</button>
         </div>
@@ -87,21 +84,19 @@ export default function Login() {
           </label>
         ) : (
           <>
-            <label>{tab === 'member' ? 'YMIS 成員編號（10位數字）' : 'Email / User ID'}
-              <input value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder={tab === 'member' ? '1234567890' : 'admin@example.com'} />
+            <label>{tab === 'member' ? 'YMIS 成員編號（10位數字）' : 'Email'}
+              <input value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder={tab === 'member' ? '1234567890' : 'your@email.com'} />
             </label>
-            {tab === 'account' && (
-              <label>密碼
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="密碼" />
-              </label>
-            )}
+            <label>密碼
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={tab === 'member' ? '成員密碼（Members 表的 password）' : '密碼'} />
+            </label>
           </>
         )}
 
         <button className="btn primary" disabled={loading} onClick={submit}>{loading ? '登入中...' : '登入'}</button>
         {msg && <p className="badge red">{msg}</p>}
       </section>
-      <p className="muted" style={{ textAlign: 'center' }}>技術測試帳號 sheep / 0728 也可在「領袖及家長」欄直接登入。</p>
+      <p className="muted" style={{ textAlign: 'center' }}>技術測試帳號：在「領袖 / 家長」欄輸入 sheep 或 0728 即可（不需密碼）。</p>
     </div>
   );
 }

@@ -98,9 +98,9 @@ function getInitialSheets_() {
       ['TROOP_NAME', '第82旅', '必填：旅團顯示名稱。'],
       ['ADMIN_EMAIL', '', '必填：第一位管理員 Email。setup 後會自動建立 admin 帳號（預設密碼 changeme）。'],
       ['ADMIN_DEFAULT_PASSWORD', 'changeme', '初始管理員預設密碼，登入後請修改。'],
-      ['FRONTEND_URL', '', 'Vercel 部署 URL。'],
-      ['ANNOUNCEMENT_FOLDER_ID', '', '公告 PDF Google Drive 資料夾 ID。'],
-      ['ANNOUNCEMENT_FOLDER_URL', '', '公告 PDF 資料夾 URL。'],
+      ['FRONTEND_URL', 'https://scoutsystem2.vercel.app/', '前端 Vercel 網址。預設是官方部署，如有自己部署的 URL 請更換。'],
+      ['ANNOUNCEMENT_FOLDER_ID', '', '公告 PDF 的 Google Drive 資料夾 ID。取得方式：打開 Drive 資料夾，看網址 https://drive.google.com/drive/folders/XXXX，XXXX 就是 ID。此資料夾必須設為「知道連結的人都可檢視」。'],
+      ['ANNOUNCEMENT_FOLDER_URL', '', '公告 PDF 的 Google Drive 資料夾完整網址（https://drive.google.com/drive/folders/XXXX）。跟 ID 是同一個資料夾，只是這裡存完整 URL 給前端顯示。'],
       ['WEB_APP_URL', '', 'Apps Script /exec URL（Deploy 後填入）。'],
       ['REGISTRY_URL', 'https://troop-router.vercel.app/api/registry.json', '轉駁器 registry。'],
       ['TECH_TEST_ACCOUNTS', 'sheep,0728', '技術測試帳號，權限等同最高。'],
@@ -121,8 +121,8 @@ function getInitialSheets_() {
       ['b1', '小童軍支部', true, '預設沒有分隊。'],
       ['b2', '幼童軍支部', true, '按顏色分隊 / 六。'],
       ['b3', '童軍支部', true, '按動物名稱小隊（英文）。'],
-      ['b4', '深資童軍支部', true, '預設沒有分隊。'],
-      ['b5', '樂行童軍支部', true, '預設沒有分隊。']
+      ['b4', '深資童軍支部', true, '此支部啟用中（TRUE），但深資童軍預設沒有小隊 / 六。如需要可自行在 Patrols 新增。'],
+      ['b5', '樂行童軍支部', true, '此支部啟用中（TRUE），但樂行童軍預設沒有小隊 / 六。如需要可自行在 Patrols 新增。']
     ],
     Patrols: [
       ['patrolId', 'branchId', 'name', 'shortName', 'leaderMemberId', 'deputyLeaderMemberId', 'memberIds', 'enabled', 'order', 'note'],
@@ -151,7 +151,9 @@ function getInitialSheets_() {
       ['applicationId', 'type', 'name', 'email', 'role', 'branchId', 'ymNumbers', 'status', 'createdAt', 'decidedAt', 'note']
     ],
     Members: [
-      ['memberId', 'ymNumber', 'name', 'branchId', 'patrolId', 'patrolRole', 'dateOfBirth', 'parentUserId', 'emergencyContactName', 'emergencyContactPhone', 'active', 'note']
+      ['memberId', 'ymNumber', 'password', 'name', 'branchId', 'patrolId', 'patrolRole', 'dateOfBirth', 'parentUserId', 'emergencyContactName', 'emergencyContactPhone', 'active', 'note'],
+      ['m_ex1', '1234567890', '1234567890', '陳大文（範例）', 'b3', 'p5', 'leader', '2012-03-15', '', '陳太', '9123 4567', true, '範例：童軍支部成員，TIGER 小隊隊長。請修改或刪除。'],
+      ['m_ex2', '2345678901', '2345678901', '李小美（範例）', 'b2', 'p1', 'member', '2015-07-20', '', '李太', '9876 5432', true, '範例：幼童軍支部成員，RED 六。請修改或刪除。']
     ],
     Events: [
       ['eventId', 'title', 'scope', 'branchId', 'date', 'location', 'kind', 'status', 'source', 'fee', 'targetMemberIds', 'createdBy', 'createdAt', 'note']
@@ -213,16 +215,24 @@ function setupReadmeSheet_(ss) {
     ['1', '到黃色 SystemConfig 填 TROOP_CODE、TROOP_NAME、ADMIN_EMAIL。'],
     ['2', '到綠色 Branches 確認支部名稱及是否啟用。'],
     ['3', '到綠色 Patrols 修改小隊 / 六名稱（童軍預設英文 TIGER / SEAGULL / WOLF）。'],
-    ['4', '到藍色 Members 輸入成員資料（ymNumber 必須 10 位數字）。'],
+    ['2', '到綠色 Branches 確認支部。enabled = TRUE 表示支部啟用，不是指小隊。'],
+    ['3', '到綠色 Patrols 修改小隊 / 六名稱（童軍預設英文 TIGER / SEAGULL / WOLF）。'],
+    ['4', '到藍色 Members 輸入成員。每個必須填 ymNumber（10位數字）和 password（密碼）。範例已提供兩行。'],
     ['5', '到灰色 Users 確認管理員 email（如 setup 時未填 ADMIN_EMAIL）。預設密碼 changeme。'],
-    ['6', 'Apps Script Deploy → Web App → Execute as Me, Anyone with Google Account → Deploy。'],
-    ['7', '把 /exec URL 複製，填入前端首頁旅團連接設定。'],
-    ['8', '在前端用管理員 email + changeme 登入；或用 STAFF_TOKEN 登入。'],
+    ['6', '回到此 Apps Script 編輯器 → 右上方「部署」→「網頁應用程式」→ 執行身分：我 → 誰可以存取：任何人 → 部署。'],
+    ['7', '複製部署後的 /exec 網址，填入前端首頁旅團連接設定。'],
+    ['8', '在前端用管理員 email + changeme 登入；或用 STAFF_TOKEN。'],
+    ['', ''],
+    ['權限設定（重要！）', ''],
+    ['Google Sheet', '建議設為「知道連結的人都可檢視」。'],
+    ['Apps Script', '部署必須設「誰可以存取：任何人」，否則前端讀不到。'],
+    ['Drive 資料夾', '公告 PDF 資料夾必須設「知道連結的人都可檢視」。'],
     ['', ''],
     ['登入方式', ''],
-    ['領袖 / 家長 / 管理員', '用 email + password（Users 表的 password 欄）。'],
-    ['成員', '用 YMIS 10 位數字編號登入（Members 表的 ymNumber）。不需要密碼。'],
-    ['技術測試', 'sheep / 0728 是技術測試帳號，權限等同最高。'],
+    ['領袖 / 家長 / 管理員', '用 Email + 密碼。'],
+    ['成員', '用 YMIS 10位數字 + 密碼（Members 表的 password 欄）。兩者都需要。'],
+    ['雙重身份', '樂行童軍同時是領袖：用 Email 登入是領袖身份；用 YMIS 登入是成員身份。'],
+    ['技術測試', 'sheep / 0728 在 Email 欄直接輸入即可。'],
     ['STAFF_TOKEN', 'SystemConfig 裡的 STAFF_TOKEN 可用來首次管理員登入。'],
     ['', ''],
     ['顏色說明', ''],
@@ -772,6 +782,7 @@ function doGet(e) {
 
       // ---- 公開寫入（不需登入） ----
       case 'applyJoin': return wrapPublic_(handleApplyJoin_(p));
+      case 'importFromLibrary': return wrapPublic_(handleImportFromLibrary_(p));
 
       // ---- 需登入寫入 ----
       case 'cancelReply': return wrap_(handleCancelReply_(p), p);
@@ -864,6 +875,10 @@ function handleLogin_(p) {
     if (!member) return json({ success: false, error: '找不到此 YMIS 編號的成員' });
     var active = getField_(member, 'active');
     if (!parseBool_(active) && active !== '') return json({ success: false, error: '此成員已停用' });
+    // 檢查密碼
+    var memberPw = String(getField_(member, 'password') || '').trim();
+    if (memberPw && memberPw !== password) return json({ success: false, error: '密碼不正確' });
+    if (!memberPw) return json({ success: false, error: '此成員尚未設定密碼，請聯絡領袖在 Members 表設定密碼。' });
     var age = calcAge_(getField_(member, 'dateOfBirth'));
     return json({ success: true, user: {
       userId: getField_(member, 'memberId'), name: getField_(member, 'name'), role: 'member',
@@ -922,6 +937,55 @@ function handleApplyJoin_(p) {
   });
   writeAudit_('anonymous', 'applyJoin', 'Applications', id, (p.name || '') + ' ' + (p.type || ''));
   return { success: true, applicationId: id, message: '申請已提交，請等待旅團審批。' };
+}
+
+// ==================== 圖書館引入（接收來自 scout-circulars 的通告） ====================
+
+function handleImportFromLibrary_(p) {
+  var id = uid_('bkm');
+  var mode = p.mode || 'informational';
+  var convertedEventId = '';
+  var status = 'published';
+  if (mode === 'troop_participation') {
+    convertedEventId = uid_('e');
+    status = 'converted';
+    var members = readTable_('Members');
+    var targets = members.map(function (m) { return getField_(m, 'memberId'); }).join(',');
+    appendRowByHeaders_('Events', {
+      eventId: convertedEventId, title: p.title || '', scope: 'troop', branchId: '',
+      date: p.date || p.deadline || '', location: '待定',
+      kind: 'notice_troop_participation', status: 'published', source: '圖書館引入',
+      fee: p.fee || '', targetMemberIds: targets, createdBy: 'library',
+      createdAt: now_(), note: '由圖書館系統引入'
+    });
+  }
+  appendRowByHeaders_('LibraryBookmarks', {
+    bookmarkId: id, title: p.title || '',
+    source: p.source || p.sourceSite || '',
+    officialDeadline: p.deadline || p.officialDeadline || '',
+    internalDeadline: '', mode: mode,
+    branchTags: p.branchTags || '全旅', status: status,
+    convertedEventId: convertedEventId, createdBy: 'library',
+    createdAt: now_(),
+    note: p.url || p.attachmentUrl || p.note || ''
+  });
+  writeAudit_('library', 'importFromLibrary', 'LibraryBookmarks', id, (p.title || ''));
+  return { success: true, message: '已從圖書館引入：' + (p.title || '') };
+}
+
+// doPost 接收來自 scout-circulars 的 POST 請求
+function doPost(e) {
+  var p = {};
+  if (e && e.postData && e.postData.contents) {
+    try { p = JSON.parse(e.postData.contents); } catch (err) {
+      p = (e && e.parameter) || {};
+    }
+  }
+  if (!p.action) p.action = 'importFromLibrary';
+  if (!p.action || p.action === 'importFromLibrary') {
+    return json(handleImportFromLibrary_(p));
+  }
+  return doGet(e);
 }
 
 function handleDecideApplication_(p) {
@@ -1006,7 +1070,8 @@ function handleDecideApplication_(p) {
 function handleCreateMember_(p) {
   var id = uid_('m');
   appendRowByHeaders_('Members', {
-    memberId: id, ymNumber: p.ymNumber || '', name: p.name || '',
+    memberId: id, ymNumber: p.ymNumber || '', password: p.password || p.ymNumber || '',
+    name: p.name || '',
     branchId: p.branchId || '', patrolId: p.patrolId || '',
     patrolRole: p.patrolRole || (p.patrolId ? 'member' : ''),
     dateOfBirth: p.dateOfBirth || '', parentUserId: p.parentUserId || '',
@@ -1020,7 +1085,7 @@ function handleCreateMember_(p) {
 }
 
 function handleUpdateMember_(p) {
-  var fields = ['ymNumber', 'name', 'branchId', 'patrolId', 'patrolRole', 'dateOfBirth', 'parentUserId', 'emergencyContactName', 'emergencyContactPhone', 'active'];
+  var fields = ['ymNumber', 'password', 'name', 'branchId', 'patrolId', 'patrolRole', 'dateOfBirth', 'parentUserId', 'emergencyContactName', 'emergencyContactPhone', 'active'];
   fields.forEach(function (f) {
     if (p[f] !== undefined && p[f] !== null) {
       updateCellByName_('Members', 'memberId', p.memberId, f, p[f]);

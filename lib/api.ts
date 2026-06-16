@@ -89,7 +89,7 @@ export async function apiApplyJoin(p: { type: string; name: string; email: strin
 
 // ==================== 成員 ====================
 
-export function apiCreateMember(p: { name: string; ymNumber: string; branchId: string; patrolId?: string; dateOfBirth?: string; parentUserId?: string; emergencyContactName?: string; emergencyContactPhone?: string }) {
+export function apiCreateMember(p: { name: string; ymNumber: string; branchId: string; patrolId?: string; dateOfBirth?: string; parentUserId?: string; emergencyContactName?: string; emergencyContactPhone?: string; password?: string }) {
   return apiMutate('createMember', p as any);
 }
 export function apiLinkParent(memberId: string, parentUserId: string) {

@@ -15,11 +15,11 @@ export default function Page(){
   // add form
   const [name,setName]=useState('');const [ym,setYm]=useState('');const [branch,setBranch]=useState('b3');
   const [patrol,setPatrol]=useState('');const [parent,setParent]=useState('');const [dob,setDob]=useState('');
-  const [phone,setPhone]=useState('');const [emergencyName,setEmergencyName]=useState('');
+  const [phone,setPhone]=useState('');const [emergencyName,setEmergencyName]=useState('');const [memberPw,setMemberPw]=useState('');
   // edit form
   const [eName,setEName]=useState('');const [eYm,setEYm]=useState('');const [eBranch,setEBranch]=useState('b3');
   const [ePatrol,setEPatrol]=useState('');const [eDob,setEDob]=useState('');const [ePhone,setEPhone]=useState('');
-  const [eEmergencyName,setEEmergencyName]=useState('');const [eParent,setEParent]=useState('');
+  const [eEmergencyName,setEEmergencyName]=useState('');const [eParent,setEParent]=useState('');const [ePw,setEPw]=useState('');
 
   useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message))},[]);
 
@@ -29,8 +29,8 @@ export default function Page(){
     if(!name||!ym){setErr('請填姓名及 YMIS');return;}
     setErr('');
     try{
-      const fresh=await apiCreateMember({name,ymNumber:ym,branchId:branch,patrolId:patrol,dateOfBirth:dob,parentUserId:parent||undefined,emergencyContactPhone:phone,emergencyContactName:emergencyName});
-      setS(fresh);setName('');setYm('');setPatrol('');setParent('');setDob('');setPhone('');setEmergencyName('');setShowAdd(false);
+      const fresh=await apiCreateMember({name,ymNumber:ym,branchId:branch,patrolId:patrol,dateOfBirth:dob,parentUserId:parent||undefined,emergencyContactPhone:phone,emergencyContactName:emergencyName,password:memberPw||ym});
+      setS(fresh);setName('');setYm('');setPatrol('');setParent('');setDob('');setPhone('');setEmergencyName('');setMemberPw('');setShowAdd(false);
     }catch(e:any){setErr(e.message)}
   }
 
@@ -39,7 +39,7 @@ export default function Page(){
     if(!c)return;
     setEditing(id);setEName(c.name);setEYm(c.ymNumber);setEBranch(c.branchId);
     setEPatrol(c.patrolId||'');setEDob(c.dateOfBirth||'');setEPhone(c.emergencyContactPhone||'');
-    setEEmergencyName(c.emergencyContactName||'');setEParent(c.parentUserId||'');
+    setEEmergencyName(c.emergencyContactName||'');setEParent(c.parentUserId||'');setEPw('');
   }
 
   async function saveEdit(){
@@ -48,7 +48,8 @@ export default function Page(){
     try{
       const fresh=await apiUpdateMember({
         memberId:editing,name:eName,ymNumber:eYm,branchId:eBranch,patrolId:ePatrol,
-        dateOfBirth:eDob,emergencyContactPhone:ePhone,emergencyContactName:eEmergencyName
+        dateOfBirth:eDob,emergencyContactPhone:ePhone,emergencyContactName:eEmergencyName,
+        ...(ePw?{password:ePw}:{})
       });
       // parent link separately
       if(eParent!==undefined){
@@ -83,6 +84,7 @@ export default function Page(){
       <div className="grid">
         <input value={name} onChange={e=>setName(e.target.value)} placeholder="姓名 *"/>
         <input value={ym} onChange={e=>setYm(e.target.value)} placeholder="YMIS（10位數字）*"/>
+        <input value={memberPw} onChange={e=>setMemberPw(e.target.value)} placeholder="登入密碼（預設=YMIS）"/>
         <select value={branch} onChange={e=>{setBranch(e.target.value);setPatrol('')}}>{branches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select>
         <select value={patrol} onChange={e=>setPatrol(e.target.value)}><option value="">不適用 / 未分隊</option>{s.patrols.filter(p=>p.branchId===branch&&p.enabled).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>
         <input type="date" value={dob} onChange={e=>setDob(e.target.value)} placeholder="出生日期"/>
@@ -106,6 +108,7 @@ export default function Page(){
               <td><select value={ePatrol} onChange={e=>setEPatrol(e.target.value)} style={{width:80}}><option value="">不適用</option>{s.patrols.filter(p=>p.branchId===eBranch&&p.enabled).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></td>
               <td>—</td>
               <td><input type="date" value={eDob} onChange={e=>setEDob(e.target.value)} style={{width:120}}/></td>
+              <td><input value={ePw} onChange={e=>setEPw(e.target.value)} placeholder="改密碼" style={{width:80}}/></td>
               <td><select value={eParent} onChange={e=>setEParent(e.target.value)} style={{width:80}}><option value="">未連結</option>{parents.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></td>
               <td><button className="btn primary" onClick={saveEdit}>儲存</button> <button className="btn" onClick={()=>setEditing(null)}>取消</button></td>
             </tr>
