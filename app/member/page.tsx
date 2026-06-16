@@ -1,5 +1,31 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { AppState, loadState, setReply, visibleEventsForMember, replyStatus } from '@/lib/store';
+import { AppState, loadState, visibleEventsForMember, replyStatus } from '@/lib/store';
+import { apiSetReply } from '@/lib/api';
 import { getSession } from '@/lib/session';
-export default function Member(){const [s,setS]=useState<AppState|null>(null);useEffect(()=>setS(loadState()),[]);const session=getSession();if(!s)return <div className="card">載入中...</div>;const member=s.members.find(m=>m.id===(session?.memberId||'m1'))||s.members[0];const adult=member.age>=18;function act(eid:string,type:'interested'|'registered'|'declined'){setReply(eid,member.id,type,{userId:session?.userId||'u6',role:'member'});setS(loadState())}return <div className="stack"><section className="hero"><span className="badge gold">成員控制台</span><h1>{member.name} 的活動</h1><p>{adult?'你已 18 歲或以上，可自行 ✅ / ❌。':'你未滿 18 歲，可按 ❤️ 表示有興趣；真正參加 / 不參加由家長決定。'}</p></section><section className="stack">{visibleEventsForMember(s,member).map(e=>{const r=replyStatus(s,e.id,member.id);return <div className="event-line event-blue" key={e.id}><div><strong>{e.title}</strong><div className="muted">{e.date} · {e.location}</div></div><div className="row"><span className="badge gold">{r?.type||'未回覆'}</span><button className="btn" onClick={()=>act(e.id,'interested')}>❤️ 有興趣</button>{adult&&<><button className="btn primary" onClick={()=>act(e.id,'registered')}>✅ 參加</button><button className="btn" onClick={()=>act(e.id,'declined')}>❌ 不參加</button></>}</div></div>})}</section></div>}
+export default function Member(){
+  const [s,setS]=useState<AppState|null>(null);const [err,setErr]=useState('');
+  const [loadingId,setLoadingId]=useState('');
+  useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message))},[]);
+  const session=getSession();
+  if(err)return <div className="card"><p className="badge red">{err}</p></div>;
+  if(!s)return <div className="card">載入中...</div>;
+  const member=s.members.find(m=>m.id===(session?.memberId))||s.members[0];
+  if(!member)return <div className="card">找不到成員資料。</div>;
+  const adult=member.age>=18;
+  async function act(eid:string,type:'interested'|'registered'|'declined'){
+    setLoadingId(eid+type);setErr('');
+    try{const f=await apiSetReply({eventId:eid,memberId:member.id,type});setS(f)}catch(e:any){setErr(e.message)}finally{setLoadingId('')}
+  }
+  const events=visibleEventsForMember(s,member);
+  return <div className="stack"><section className="hero"><span className="badge gold">成員控制台</span><h1>{member.name} 的活動</h1><p>{adult?'你已 18 歲或以上，可自行 ✅ / ❌。':'你未滿 18 歲，可按 ❤️ 表示有興趣；參加 / 不參加由家長決定。'}</p></section>
+    {err&&<p className="badge red">{err}</p>}
+    <section className="stack">{events.length===0?<div className="card"><p className="muted">暫無可見活動。</p></div>:
+      events.map(e=>{const r=replyStatus(s,e.id,member.id);return <div className="event-line event-blue" key={e.id}><div><strong>{e.title}</strong><div className="muted">{e.date} · {e.location}{e.fee?` · ${e.fee}`:''}</div></div>
+        <div className="row"><span className="badge gold">{r?.type||'未回覆'}</span>
+          <button className="btn" disabled={loadingId===e.id+'interested'} onClick={()=>act(e.id,'interested')}>❤️ 有興趣</button>
+          {adult&&<><button className="btn primary" disabled={loadingId===e.id+'registered'} onClick={()=>act(e.id,'registered')}>✅ 參加</button><button className="btn" disabled={loadingId===e.id+'declined'} onClick={()=>act(e.id,'declined')}>❌ 不參加</button></>}
+        </div></div>;
+      })}</section>
+  </div>;
+}

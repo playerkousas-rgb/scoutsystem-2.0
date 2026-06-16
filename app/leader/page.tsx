@@ -1,3 +1,27 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { AppState, loadState, computeStats } from '@/lib/store';
 import Auth from '@/components/Auth';
 import { FeatureCard, SummaryCard } from '@/components/Cards';
-export default function Leader(){return <Auth roles={['group_leader','branch_leader','coach']}><div className="stack"><section className="hero"><span className="badge gold">領袖控制台</span><h1>支部管理視角</h1><p>團長及支部領袖可編輯自己支部的活動、報名及通告；教練員可按權限查看及標記圖書館。</p></section><section className="grid"><SummaryCard label="用戶" value={42} desc="可見範圍內用戶"/><SummaryCard label="待審批" value={3} desc="自己支部待審批" tone="red"/><SummaryCard label="活動" value={5} desc="自己支部活動" tone="green"/><SummaryCard label="通告" value={9} desc="自己支部通告" tone="gold"/></section><section className="grid"><FeatureCard title="成員資料庫" icon="👥" text="查看自己支部成員。" href="/admin/members"/><FeatureCard title="家長審核 / 申請管理" icon="✅" text="團長及支部領袖可處理自己支部申請；教練員無權。" href="/admin/applications"/><FeatureCard title="活動管理" icon="🗓️" text="管理自己支部活動。" href="/admin/events"/><FeatureCard title="報名管理" icon="📋" text="查看報名、匯出名單及緊急聯絡。" href="/admin/registrations"/><FeatureCard title="圖書館標記" icon="📚" text="引入適合自己支部的通告。" href="/library/import"/><FeatureCard title="通告管理" icon="📄" text="查看 / 編輯自己支部通告。" href="/notices"/><FeatureCard title="元件市場" icon="🧩" text="團長以上可加入元件並設定可見角色。" href="/marketplace"/></section></div></Auth>}
+export default function Leader(){
+  const [s,setS]=useState<AppState|null>(null);const [err,setErr]=useState('');
+  useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message))},[]);
+  const stats=s?computeStats(s):{users:0,pending:0,activities:0,notices:0};
+  return <Auth roles={['super_admin','admin','group_leader','branch_leader','coach']}><div className="stack">
+    <section className="hero"><span className="badge gold">領袖控制台</span><h1>領袖控制台</h1><p>管理所屬支部的活動、成員及通告。</p></section>
+    {err&&<p className="badge red">{err}</p>}
+    <section className="grid">
+      <SummaryCard label="活動" value={stats.activities} desc="已發布活動" tone="green"/>
+      <SummaryCard label="待審批" value={stats.pending} desc="等待審批申請" tone="red"/>
+      <SummaryCard label="通告" value={stats.notices} desc="圖書館引入通告" tone="gold"/>
+    </section>
+    <section className="grid">
+      <FeatureCard title="成員資料庫" icon="👥" text="查看及管理所屬支部成員。" href="/admin/members"/>
+      <FeatureCard title="活動管理" icon="🗓️" text="新增、發布及管理活動。" href="/admin/events"/>
+      <FeatureCard title="報名管理" icon="📋" text="查看報名狀態及匯出。" href="/admin/registrations"/>
+      <FeatureCard title="圖書館標記" icon="📚" text="引入通告。" href="/library/import"/>
+      <FeatureCard title="行事曆" icon="📅" text="查看及管理行事曆。" href="/calendar"/>
+      <FeatureCard title="家長審核" icon="✅" text="審核家長申請。" href="/admin/applications"/>
+    </section>
+  </div></Auth>;
+}

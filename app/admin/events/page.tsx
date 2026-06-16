@@ -1,5 +1,99 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { addAudit, AppState, loadState, mutate } from '@/lib/store';
-import { getSession } from '@/lib/session';
-export default function Page(){const [state,setState]=useState<AppState|null>(null);const [title,setTitle]=useState('');useEffect(()=>setState(loadState()),[]);function add(){if(!title.trim())return;const user=getSession();const next=mutate(s=>{const id='e_'+Date.now();s.events.unshift({id,title,date:'2026-09-01',location:'待定',scope:'troop',kind:'activity',status:'draft',targetMemberIds:s.members.map(m=>m.id),source:'手動新增'});addAudit(s,user?.userId||'demo','create','Events',id,title)});setTitle('');setState(next)}function publish(id:string){const user=getSession();const next=mutate(s=>{const e=s.events.find(x=>x.id===id);if(e)e.status='published';addAudit(s,user?.userId||'demo','publish','Events',id,'發布活動')});setState(next)} if(!state)return <div className="card">載入中...</div>;return <div className="stack"><section className="hero"><span className="badge gold">活動管理</span><h1>活動管理</h1><p>已可在沙盤新增 draft、發布活動；活動會被行事曆讀取。</p></section><section className="card row"><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="新活動標題"/><button className="btn primary" onClick={add}>新增活動</button></section><section className="grid-wide">{state.events.map(e=><div className="card" key={e.id}><span className={`badge ${e.status==='published'?'green':'gold'}`}>{e.status}</span><h3>{e.title}</h3><p className="muted">{e.date} · {e.location} · {e.source}</p>{e.status==='draft'&&<button className="btn primary" onClick={()=>publish(e.id)}>發布</button>}</div>)}</section></div>}
+import { AppState, loadState } from '@/lib/store';
+import { apiCreateEvent, apiPublishEvent, apiUpdateEvent, apiDeleteEvent } from '@/lib/api';
+import { branches } from '@/lib/model';
+
+export default function Page(){
+  const [s,setS]=useState<AppState|null>(null);const [err,setErr]=useState('');
+  const [showAdd,setShowAdd]=useState(false);
+  const [editing,setEditing]=useState<string|null>(null);
+  // add form
+  const [title,setTitle]=useState('');const [date,setDate]=useState('');const [location,setLocation]=useState('');
+  const [scope,setScope]=useState<'troop'|'branch'>('troop');const [branchId,setBranchId]=useState('');const [fee,setFee]=useState('');
+  // edit form
+  const [editTitle,setEditTitle]=useState('');const [editDate,setEditDate]=useState('');const [editLocation,setEditLocation]=useState('');
+  const [editFee,setEditFee]=useState('');const [editScope,setEditScope]=useState<'troop'|'branch'>('troop');const [editBranchId,setEditBranchId]=useState('');
+
+  useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message))},[]);
+
+  async function add(){
+    if(!title.trim()){setErr('請填活動標題');return;}
+    setErr('');
+    try{
+      const fresh=await apiCreateEvent({title,scope,branchId:scope==='branch'?branchId:'',date:date||undefined,location:location||undefined,fee:fee||undefined,status:'draft'});
+      setS(fresh);setTitle('');setDate('');setLocation('');setFee('');setShowAdd(false);
+    }catch(e:any){setErr(e.message)}
+  }
+
+  function startEdit(id:string){
+    const e=s?.events.find(x=>x.id===id);
+    if(!e)return;
+    setEditing(id);setEditTitle(e.title);setEditDate(e.date);setEditLocation(e.location);
+    setEditFee(e.fee||'');setEditScope(e.scope as any);setEditBranchId(e.branchId||'');
+  }
+
+  async function saveEdit(){
+    if(!editing)return;
+    setErr('');
+    try{
+      const fresh=await apiUpdateEvent({eventId:editing,title:editTitle,date:editDate,location:editLocation,fee:editFee,scope:editScope,branchId:editScope==='branch'?editBranchId:''});
+      setS(fresh);setEditing(null);
+    }catch(e:any){setErr(e.message)}
+  }
+
+  async function publish(id:string){setErr('');try{const f=await apiPublishEvent(id);setS(f)}catch(e:any){setErr(e.message)}}
+  async function del(id:string){if(!confirm('確定刪除此活動？'))return;setErr('');try{const f=await apiDeleteEvent(id);setS(f);if(editing===id)setEditing(null)}catch(e:any){setErr(e.message)}}
+
+  if(!s)return <div className="card">{err||'載入中...'}</div>;
+  return <div className="stack">
+    <section className="hero"><span className="badge gold">活動管理</span><h1>活動管理</h1><p>新增、編輯、發布及刪除活動。發布後會出現在行事曆。</p></section>
+    {err&&<p className="badge red">{err}</p>}
+
+    <button className="btn primary" onClick={()=>setShowAdd(!showAdd)}>{showAdd?'取消':'＋ 新增活動'}</button>
+
+    {showAdd&&<section className="card stack"><h3>新增活動</h3>
+      <div className="grid">
+        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="活動標題 *"/>
+        <input type="date" value={date} onChange={e=>setDate(e.target.value)} placeholder="日期"/>
+        <input value={location} onChange={e=>setLocation(e.target.value)} placeholder="地點"/>
+        <input value={fee} onChange={e=>setFee(e.target.value)} placeholder="費用（如 $80）"/>
+        <select value={scope} onChange={e=>setScope(e.target.value as any)}><option value="troop">全旅</option><option value="branch">支部</option></select>
+        {scope==='branch'&&<select value={branchId} onChange={e=>setBranchId(e.target.value)}><option value="">選擇支部</option>{branches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select>}
+      </div>
+      <button className="btn primary" onClick={add}>新增活動（草稿）</button>
+    </section>}
+
+    <section className="grid-wide">{s.events.map(e=>{
+      const isEdit=editing===e.id;
+      return <div className="card" key={e.id}>
+        <div className="row" style={{justifyContent:'space-between'}}>
+          <span className={`badge ${e.status==='published'?'green':'gold'}`}>{e.status}</span>
+          <span className={`badge ${e.kind==='notice_troop_participation'?'purple':'blue'}`}>{e.kind==='notice_troop_participation'?'圖書館轉入':'旅團活動'}</span>
+        </div>
+        {isEdit?<input value={editTitle} onChange={e=>setEditTitle(e.target.value)} style={{fontSize:'1.1em',fontWeight:'bold',margin:'8px 0'}}/>:<h3>{e.title}</h3>}
+
+        {isEdit?(
+          <div className="stack" style={{gap:6}}>
+            <label>日期<input type="date" value={editDate} onChange={e=>setEditDate(e.target.value)}/></label>
+            <label>地點<input value={editLocation} onChange={e=>setEditLocation(e.target.value)}/></label>
+            <label>費用<input value={editFee} onChange={e=>setEditFee(e.target.value)}/></label>
+            <select value={editScope} onChange={e=>setEditScope(e.target.value as any)}><option value="troop">全旅</option><option value="branch">支部</option></select>
+            {editScope==='branch'&&<select value={editBranchId} onChange={e=>setEditBranchId(e.target.value)}><option value="">選擇支部</option>{branches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select>}
+            <div className="row"><button className="btn primary" onClick={saveEdit}>儲存</button><button className="btn" onClick={()=>setEditing(null)}>取消</button></div>
+          </div>
+        ):(
+          <>
+            <p className="muted">{e.date} · {e.location||'待定'} · {e.scope}{e.fee?` · ${e.fee}`:''}</p>
+            <p className="muted">{e.source||'—'}</p>
+            <div className="row" style={{flexWrap:'wrap'}}>
+              <button className="btn" onClick={()=>startEdit(e.id)}>✏️ 編輯</button>
+              {e.status==='draft'&&<button className="btn primary" onClick={()=>publish(e.id)}>發布</button>}
+              <button className="btn" onClick={()=>del(e.id)}>🗑️ 刪除</button>
+            </div>
+          </>
+        )}
+      </div>;
+    })}</section>
+  </div>;
+}

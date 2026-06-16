@@ -1,3 +1,13 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { AppState, loadState } from '@/lib/store';
 import Link from 'next/link';
-import { mockNotices } from '@/lib/model';
-export default function Library(){return <div className="stack"><section className="hero"><span className="badge gold">圖書館標記</span><h1>本旅已標記通告</h1><p>這裡不是全港通告庫，而是領袖從 Scout Circulars 引入並按本旅需要標記後的通告。</p><div className="row"><a className="btn primary" href="https://scout-circulars.vercel.app/" target="_blank">開啟 Scout Circulars</a><Link className="btn" href="/library/import">模擬加入通告</Link></div></section><section className="grid-wide">{mockNotices.map(n=><div className="card" key={n.id}><span className={`badge ${n.mode==='troop_participation'?'purple':'gold'}`}>{n.mode==='troop_participation'?'🏕️ 旅團參與':'📢 資訊性'}</span><h3>{n.title}</h3><p className="muted">{n.source} · 官方截止 {n.officialDeadline} · 本旅截止 {n.internalDeadline}</p><p className="muted">適合支部：{n.branches.join('、')} · 費用：{n.fee}</p></div>)}</section></div>}
+export default function Library(){
+  const [s,setS]=useState<AppState|null>(null);const [err,setErr]=useState('');
+  useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message))},[]);
+  if(err)return <div className="card"><p className="badge red">{err}</p></div>;
+  if(!s)return <div className="card">載入中...</div>;
+  return <div className="stack"><section className="hero"><span className="badge gold">圖書館</span><h1>通告圖書館</h1><p>這裡顯示已引入 ScoutSystem 的通告。領袖可到圖書館標記頁引入新通告。</p><Link className="btn primary" href="/library/import">📚 引入新通告</Link></section>
+    <section className="grid-wide">{s.bookmarks.length===0?<div className="card"><p className="muted">暫無已引入通告。</p></div>:s.bookmarks.map(b=><div className="card" key={b.id}><span className={`badge ${b.mode==='troop_participation'?'purple':'gold'}`}>{b.mode==='troop_participation'?'旅團參與':'資訊性'}</span><h3>{b.title}</h3><p className="muted">來源：{b.source||'—'}</p><p className="muted">原截止：{b.officialDeadline||'—'} · 本旅截止：{b.internalDeadline||'—'}</p><p className="muted">支部：{b.branchTags.join(', ')||'全旅'}</p></div>)}</section>
+  </div>;
+}

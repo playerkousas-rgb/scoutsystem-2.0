@@ -1,5 +1,40 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { AppState, loadState, mutate, addAudit, replyStatus } from '@/lib/store';
-import { getSession } from '@/lib/session';
-export default function Page(){const [s,setS]=useState<AppState|null>(null);const [eventId,setEventId]=useState('');useEffect(()=>{const st=loadState();setS(st);setEventId(st.events[0]?.id||'')},[]);function togglePaid(mid:string){const user=getSession();const next=mutate(st=>{let r=st.replies.find(x=>x.eventId===eventId&&x.memberId===mid);if(!r){r={id:'r_'+Date.now(),eventId,memberId:mid,type:'registered',operatedBy:'leader',paid:true,updatedAt:new Date().toISOString()};st.replies.push(r)}else r.paid=!r.paid;addAudit(st,user?.userId||'demo','togglePaid','EventReplies',eventId,mid)});setS(next)}function csv(){if(!s)return;const e=s.events.find(x=>x.id===eventId);if(!e)return;const rows=[['姓名','YMIS','小隊','狀態','緊急聯絡人','緊急電話','付款']];e.targetMemberIds.forEach(mid=>{const m=s.members.find(x=>x.id===mid);if(!m)return;const r=replyStatus(s,eventId,mid);const p=s.patrols.find(x=>x.id===m.patrolId);rows.push([m.name,m.ymNumber,p?.name||'不適用',r?.type||'unresponded',m.emergencyContactName||'',m.emergencyContactPhone||'',r?.paid?'paid':'']);});const blob=new Blob(['\ufeff'+rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n')],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${e.title}_報名.csv`;a.click();URL.revokeObjectURL(url)}if(!s)return <div className="card">載入中...</div>;const event=s.events.find(e=>e.id===eventId);const targets=event?s.members.filter(m=>event.targetMemberIds.includes(m.id)):[];const map:Record<string,{name:string;yes:number;heart:number;pending:number}>= {};targets.forEach(m=>{const p=s.patrols.find(x=>x.id===m.patrolId);const key=p?.id||'none';map[key] ||= {name:p?.name||'無分隊 / 不適用',yes:0,heart:0,pending:0};const r=replyStatus(s,eventId,m.id); if(r?.type==='registered')map[key].yes++; else if(r?.type==='interested')map[key].heart++; else map[key].pending++;});const patrolStats=Object.values(map);return <div className="stack"><section className="hero"><span className="badge gold">報名管理</span><h1>報名名單及匯出</h1><p>已可切換活動、按小隊統計、標記付款及匯出 CSV。</p></section><section className="card"><label>選擇活動<select value={eventId} onChange={e=>setEventId(e.target.value)}>{s.events.map(e=><option key={e.id} value={e.id}>{e.title}</option>)}</select></label></section><section className="grid">{patrolStats.map(p=><div className="card" key={p.name}><span className="badge blue">{p.name}</span><h2>✅{p.yes} ❤️{p.heart} ⚠️{p.pending}</h2></div>)}</section><section className="card"><table className="table"><thead><tr><th>姓名</th><th>小隊 / 六</th><th>狀態</th><th>緊急電話</th><th>付款</th><th>操作</th></tr></thead><tbody>{targets.map(m=>{const r=replyStatus(s,eventId,m.id);const p=s.patrols.find(x=>x.id===m.patrolId);return <tr key={m.id}><td>{m.name}</td><td>{p?.name||'不適用'}</td><td>{r?.type||'unresponded'}</td><td>{m.emergencyContactPhone||''}</td><td>{r?.paid?'已付款':'未付款'}</td><td><button className="btn" onClick={()=>togglePaid(m.id)}>切換付款</button></td></tr>})}</tbody></table><button className="btn primary" onClick={csv}>匯出 CSV</button></section></div>}
+import { Suspense, useEffect, useState } from 'react';
+import { AppState, loadState, replyStatus } from '@/lib/store';
+import { apiTogglePaid } from '@/lib/api';
+import { useSearchParams } from 'next/navigation';
+
+function RegistrationsInner(){
+  const [s,setS]=useState<AppState|null>(null);const [err,setErr]=useState('');
+  const search=useSearchParams();
+  const [eventId,setEventId]=useState('');
+  useEffect(()=>{loadState().then(st=>{setS(st);const q=search?.get('eventId');setEventId(q||st.events[0]?.id||'')}).catch(e=>setErr(e.message))},[]);
+  async function togglePaid(mid:string){setErr('');try{const f=await apiTogglePaid(eventId,mid);setS(f)}catch(e:any){setErr(e.message)}}
+  function csv(){
+    if(!s)return;const e=s.events.find(x=>x.id===eventId);if(!e)return;
+    const rows=[['姓名','YMIS','小隊','狀態','緊急聯絡人','緊急電話','付款']];
+    e.targetMemberIds.forEach(mid=>{const m=s.members.find(x=>x.id===mid);if(!m)return;const r=replyStatus(s,eventId,mid);const p=s.patrols.find(x=>x.id===m.patrolId);
+      rows.push([m.name,m.ymNumber,p?.name||'不適用',r?.type||'unresponded',m.emergencyContactName||'',m.emergencyContactPhone||'',r?.paid?'paid':'']);});
+    const blob=new Blob(['\ufeff'+rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n')],{type:'text/csv'});
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${e.title}_報名.csv`;a.click();URL.revokeObjectURL(url);
+  }
+  if(!s)return <div className="card">{err||'載入中...'}</div>;
+  const event=s.events.find(e=>e.id===eventId);
+  const targets=event?s.members.filter(m=>event.targetMemberIds.includes(m.id)):[];
+  const map:Record<string,{name:string;yes:number;heart:number;pending:number}>={};
+  targets.forEach(m=>{const p=s.patrols.find(x=>x.id===m.patrolId);const key=p?.id||'none';map[key]||={name:p?.name||'無分隊 / 不適用',yes:0,heart:0,pending:0};
+    const r=replyStatus(s,eventId,m.id);if(r?.type==='registered')map[key].yes++;else if(r?.type==='interested')map[key].heart++;else map[key].pending++;});
+  const patrolStats=Object.values(map);
+  return <div className="stack"><section className="hero"><span className="badge gold">報名管理</span><h1>報名名單及匯出</h1><p>切換活動、按小隊統計、標記付款及匯出 CSV。</p></section>
+    {err&&<p className="badge red">{err}</p>}
+    <section className="card"><label>選擇活動<select value={eventId} onChange={e=>setEventId(e.target.value)}>{s.events.map(e=><option key={e.id} value={e.id}>{e.title}</option>)}</select></label></section>
+    {event&&<><section className="grid">{patrolStats.map(p=><div className="card" key={p.name}><span className="badge blue">{p.name}</span><h2>✅{p.yes} ❤️{p.heart} ⚠️{p.pending}</h2></div>)}</section>
+    <section className="card"><table className="table"><thead><tr><th>姓名</th><th>小隊 / 六</th><th>狀態</th><th>緊急電話</th><th>付款</th><th>操作</th></tr></thead>
+      <tbody>{targets.map(m=>{const r=replyStatus(s,eventId,m.id);const p=s.patrols.find(x=>x.id===m.patrolId);return <tr key={m.id}><td>{m.name}</td><td>{p?.name||'不適用'}</td><td>{r?.type||'未回覆'}</td><td>{m.emergencyContactPhone||'—'}</td><td>{r?.paid?'已付款':'未付款'}</td><td><button className="btn" onClick={()=>togglePaid(m.id)}>切換付款</button></td></tr>})}</tbody></table>
+      <button className="btn primary" onClick={csv} style={{marginTop:12}}>匯出 CSV</button></section></>}
+  </div>;
+}
+
+export default function Page(){
+  return <Suspense fallback={<div className="card">載入中...</div>}><RegistrationsInner/></Suspense>;
+}
