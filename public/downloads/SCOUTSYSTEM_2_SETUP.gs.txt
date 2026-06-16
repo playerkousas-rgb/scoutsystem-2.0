@@ -65,7 +65,7 @@ function setupScoutSystem() {
     '已建立工作表、標記顏色、加上欄位說明，並隱藏進階後台分頁。\n\n'
     + '請照 README_新手必看：\n'
     + '1. 到黃色 SystemConfig 填旅團資料\n'
-    + '2. 到綠色 Branches / Patrols 修改支部及小隊\n'
+    + '2. 到綠色 Branches 確認支部，Patrols 改小隊\n'
     + '3. 到藍色 Members 建立成員\n'
     + '4. Deploy 為 Web App（Anyone）\n'
     + '5. 把 /exec URL 填入前端\n'
@@ -100,8 +100,6 @@ function getInitialSheets_() {
       ['ADMIN_DEFAULT_PASSWORD', 'changeme', '初始管理員預設密碼，登入後請修改。'],
       ['FRONTEND_URL', 'https://scoutsystem2.vercel.app/', '前端 Vercel 網址。預設是官方部署，如有自己部署的 URL 請更換。'],
       ['ANNOUNCEMENT_FOLDER_ID', '', '公告 PDF 的 Google Drive 資料夾 ID。取得方式：打開 Drive 資料夾，看網址 https://drive.google.com/drive/folders/XXXX，XXXX 就是 ID。資料夾需設為「知道連結的人都可檢視」。'],
-      ['WEB_APP_URL', '', '此欄只作記錄用途。前端不從此讀取 URL。'],
-,
       ['REGISTRY_URL', 'https://troop-router.vercel.app/api/registry.json', '轉駁器 registry。'],
       ['TECH_TEST_ACCOUNTS', 'sheep,0728', '技術測試帳號，權限等同最高。'],
       ['STAFF_TOKEN', '', 'setup 自動生成；首次管理員 / 技術管理員登入用。']
@@ -213,8 +211,6 @@ function setupReadmeSheet_(ss) {
     ['', ''],
     ['你現在需要做的事', '照順序完成。'],
     ['1', '到黃色 SystemConfig 填 TROOP_CODE、TROOP_NAME、ADMIN_EMAIL。'],
-    ['2', '到綠色 Branches 確認支部名稱及是否啟用。'],
-    ['3', '到綠色 Patrols 修改小隊 / 六名稱（童軍預設英文 TIGER / SEAGULL / WOLF）。'],
     ['2', '到綠色 Branches 確認支部。enabled = TRUE 表示支部啟用，不是指小隊。'],
     ['3', '到綠色 Patrols 修改小隊 / 六名稱（童軍預設英文 TIGER / SEAGULL / WOLF）。'],
     ['4', '到藍色 Members 輸入成員。每個必須填 ymNumber（10位數字）和 password（密碼）。範例已提供兩行。'],

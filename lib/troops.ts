@@ -3,7 +3,8 @@
 // 用戶只能看到旅團名稱，看不到後台 URL
 
 export type ApprovedTroop = {
-  id: string;
+  key: string;       // 唯一識別（給前端下拉用）
+  id: string;        // 旅團號
   name: string;
   webAppUrl: string;
   status: 'active' | 'testing';
@@ -12,25 +13,19 @@ export type ApprovedTroop = {
 
 export const APPROVED_TROOPS: ApprovedTroop[] = [
   {
-    id: '0082',
-    name: '第82旅',
-    webAppUrl: 'https://script.google.com/macros/s/AKfycbypJw25bnKxDwYoSZBTWHjq2BIQ_eC4PVdS1MDSLlT7m6SZRUHX1MihkQcSAO8_Kq2F/exec',
-    status: 'testing',
-    note: '測試旅團（舊）',
-  },
-  {
-    id: '0082',
-    name: '第82旅（新測試）',
+    key: 'troop_0083',
+    id: '0083',
+    name: '第83旅（測試）',
     webAppUrl: 'https://script.google.com/macros/s/AKfycbwATtCXH8t8bV5VOBVY-ocPJR1RgV4iQebJp_oo_NGV7-90xJZ0d4pAVlFf_f51FHYW/exec',
     status: 'testing',
-    note: '新部署測試',
+    note: '測試旅團',
   },
   // 新旅團接入後在這裡加入，格式：
-  // { id: '0083', name: '第83旅', webAppUrl: 'https://script.google.com/...', status: 'active' },
+  // { key: 'troop_0084', id: '0084', name: '第84旅', webAppUrl: 'https://script.google.com/...', status: 'active' },
 ];
 
-export function findTroop(id: string): ApprovedTroop | null {
-  return APPROVED_TROOPS.find(t => t.id === id) || null;
+export function findTroopByKey(key: string): ApprovedTroop | null {
+  return APPROVED_TROOPS.find(t => t.key === key) || null;
 }
 
 export function activeTroops(): ApprovedTroop[] {

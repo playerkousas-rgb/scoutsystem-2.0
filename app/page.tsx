@@ -5,7 +5,7 @@ import { activeTroops } from '@/lib/troops';
 import { useEffect, useState } from 'react';
 
 export default function Home(){
-  const [selectedTroopId,setSelectedTroopId]=useState('');
+  const [selectedKey,setSelectedKey]=useState('');
   const [msg,setMsg]=useState('');
   const [showManual,setShowManual]=useState(false);
   const [manualUrl,setManualUrl]=useState('');
@@ -15,30 +15,30 @@ export default function Home(){
   useEffect(()=>{
     try{
       const t=JSON.parse(localStorage.getItem('scoutsystem2_selected_troop')||'null');
-      if(t){setSelectedTroopId(t.id||'')}
+      if(t){setSelectedKey(t.key||'')}
     }catch{}
   },[]);
 
   function selectTroop(){
     setMsg('');
-    const troop=troops.find(t=>t.id===selectedTroopId||t.name===selectedTroopId);
+    const troop=troops.find(t=>t.key===selectedKey);
     if(!troop){setMsg('請選擇旅團');return;}
     localStorage.setItem('scoutsystem2_selected_troop',JSON.stringify({
-      id:troop.id,name:troop.name,webAppUrl:troop.webAppUrl
+      key:troop.key,id:troop.id,name:troop.name,webAppUrl:troop.webAppUrl
     }));
-    setMsg('✅ 已選擇 '+troop.name+'，請登入。');
+    setMsg('✅ 已選擇 '+troop.name+'。');
   }
 
   function connectManual(){
     setMsg('');
     if(!manualUrl.includes('/exec')){setMsg('請填正確的 Apps Script /exec URL');return;}
     localStorage.setItem('scoutsystem2_selected_troop',JSON.stringify({
-      id:manualName||'custom',name:manualName||'自訂旅團',webAppUrl:manualUrl
+      key:'manual',id:manualName||'custom',name:manualName||'自訂旅團',webAppUrl:manualUrl
     }));
-    setMsg('✅ 已連接，請登入。');
+    setMsg('✅ 已連接。');
   }
 
-  const selected=troops.find(t=>t.id===selectedTroopId);
+  const selected=troops.find(t=>t.key===selectedKey);
 
   return <div className="stack">
     <section className="hero">
@@ -57,9 +57,9 @@ export default function Home(){
       {troops.length===0?
         <p className="muted">尚未有旅團接入。如要接入請<a href="/onboard">申請</a>。</p>
       :
-        <select value={selectedTroopId} onChange={e=>setSelectedTroopId(e.target.value)}>
+        <select value={selectedKey} onChange={e=>setSelectedKey(e.target.value)}>
           <option value="">— 請選擇旅團 —</option>
-          {troops.map((t,i)=><option key={i} value={t.id}>{t.name}（{t.id}）{t.status==='testing'?' [測試中]':''}</option>)}
+          {troops.map(t=><option key={t.key} value={t.key}>{t.name}（{t.id}）{t.status==='testing'?' [測試中]':''}</option>)}
         </select>
       }
       {selected&&<button className="btn primary" onClick={selectTroop}>使用此旅團</button>}
