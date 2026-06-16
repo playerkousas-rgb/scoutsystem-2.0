@@ -9,7 +9,9 @@ export function getSession(): Session | null {
 export function setSession(s: Session) { if (typeof window !== 'undefined') localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
 export function clearSession() { if (typeof window !== 'undefined') localStorage.removeItem(SESSION_KEY); }
 export function demoSession(role: Role): Session {
-  const base = { troopCode: '0082', troopName: '第82旅' };
+  let selected:any=null;
+  if (typeof window !== 'undefined') { try { selected = JSON.parse(localStorage.getItem('scoutsystem2_selected_troop') || 'null'); } catch {} }
+  const base = { troopCode: selected?.id || '0082', troopName: selected?.name || '第82旅' };
   const map: Record<Role, Session> = {
     super_admin: { userId:'sheep', name:'Sheep / 0728 技術測試', role, ...base },
     admin: { userId:'u1', name:'陳管理員', role, ...base },

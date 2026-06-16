@@ -29,7 +29,7 @@ export const seedState:AppState={
     {id:'p6',branchId:'b3',name:'雄鷹小隊',short:'鷹',enabled:true,order:2},
     {id:'p7',branchId:'b3',name:'灰狼小隊',short:'狼',enabled:true,order:3},
   ],
-  config:{ TROOP_CODE:'0082', TROOP_NAME:'第82旅', ANNOUNCEMENT_FOLDER_URL:'', ANNOUNCEMENT_FOLDER_ID:'', REGISTRY_URL:'https://troop-router.vercel.app/api/registry.json', TECH_TEST_ACCOUNTS:'sheep,0728' },
+  config:{ TROOP_CODE:'0082', TROOP_NAME:'第82旅', WEB_APP_URL:'https://script.google.com/macros/s/AKfycbypJw25bnKxDwYoSZBTWHjq2BIQ_eC4PVdS1MDSLlT7m6SZRUHX1MihkQcSAO8_Kq2F/exec', SHEET_URL:'https://docs.google.com/spreadsheets/d/1wrHoYMTVXd68TbnmPwqCxqISQ7IQWEnoS_dtBVDDCsg/edit', ANNOUNCEMENT_FOLDER_URL:'', ANNOUNCEMENT_FOLDER_ID:'', REGISTRY_URL:'https://troop-router.vercel.app/api/registry.json', TECH_TEST_ACCOUNTS:'sheep,0728' },
   users:[
     {id:'sheep',name:'Sheep / 0728 技術測試',email:'sheep@example.com',role:'super_admin',approved:true,techTest:true},
     {id:'u1',name:'陳管理員',email:'admin@example.com',role:'admin',approved:true},
