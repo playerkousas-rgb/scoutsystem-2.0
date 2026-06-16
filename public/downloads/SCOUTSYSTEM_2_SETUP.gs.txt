@@ -94,13 +94,14 @@ function getInitialSheets_() {
   return {
     SystemConfig: [
       ['key', 'value', 'note'],
-      ['TROOP_CODE', '0082', '必填：旅團號，純數字。'],
+      ['TROOP_CODE', "'0082", '必填：旅團號，純數字。前面加單引號防止 Google Sheet 吃掉前面的 0。'],
       ['TROOP_NAME', '第82旅', '必填：旅團顯示名稱。'],
       ['ADMIN_EMAIL', '', '必填：第一位管理員 Email。setup 後會自動建立 admin 帳號（預設密碼 changeme）。'],
       ['ADMIN_DEFAULT_PASSWORD', 'changeme', '初始管理員預設密碼，登入後請修改。'],
       ['FRONTEND_URL', 'https://scoutsystem2.vercel.app/', '前端 Vercel 網址。預設是官方部署，如有自己部署的 URL 請更換。'],
       ['ANNOUNCEMENT_FOLDER_ID', '', '公告 PDF 的 Google Drive 資料夾 ID。取得方式：打開 Drive 資料夾，看網址 https://drive.google.com/drive/folders/XXXX，XXXX 就是 ID。資料夾需設為「知道連結的人都可檢視」。'],
-      ['WEB_APP_URL', '', 'Apps Script /exec URL（Deploy 後填入）。'],
+      ['WEB_APP_URL', '', '此欄只作記錄用途。前端不從此讀取 URL。'],
+,
       ['REGISTRY_URL', 'https://troop-router.vercel.app/api/registry.json', '轉駁器 registry。'],
       ['TECH_TEST_ACCOUNTS', 'sheep,0728', '技術測試帳號，權限等同最高。'],
       ['STAFF_TOKEN', '', 'setup 自動生成；首次管理員 / 技術管理員登入用。']
@@ -217,7 +218,7 @@ function setupReadmeSheet_(ss) {
     ['2', '到綠色 Branches 確認支部。enabled = TRUE 表示支部啟用，不是指小隊。'],
     ['3', '到綠色 Patrols 修改小隊 / 六名稱（童軍預設英文 TIGER / SEAGULL / WOLF）。'],
     ['4', '到藍色 Members 輸入成員。每個必須填 ymNumber（10位數字）和 password（密碼）。範例已提供兩行。'],
-    ['5', '到灰色 Users 確認管理員 email（如 setup 時未填 ADMIN_EMAIL）。預設密碼 changeme。'],
+    ['5', '上方選單 ScoutSystem 2.0 → 重新建立管理員帳號。會根據 ADMIN_EMAIL 自動建立 admin，不需手動打開 Users。'],
     ['6', '回到此 Apps Script 編輯器 → 右上方「部署」→「網頁應用程式」→ 執行身分：我 → 誰可以存取：任何人 → 部署。'],
     ['7', '複製部署後的 /exec 網址，提交旅團接入申請（/onboard）。'],
     ['8', '在前端用管理員 email + changeme 登入；或用 STAFF_TOKEN。'],
@@ -315,7 +316,15 @@ function onOpen() {
   SpreadsheetApp.getUi().createMenu('ScoutSystem 2.0')
     .addItem('顯示進階分頁', 'showAdvancedSheets')
     .addItem('隱藏進階分頁', 'hideAdvancedSheets')
-    .addSeparator().addItem('重新格式化 / 上色', 'reformatScoutSystem').addToUi();
+    .addSeparator()
+    .addItem('重新建立管理員帳號', 'reseedAdminMenu')
+    .addSeparator()
+    .addItem('重新格式化 / 上色', 'reformatScoutSystem').addToUi();
+}
+
+function reseedAdminMenu() {
+  seedInitialAdmin_(SpreadsheetApp.getActiveSpreadsheet());
+  SpreadsheetApp.getUi().alert('已根據 SystemConfig 的 ADMIN_EMAIL 重新建立管理員帳號。密碼：' + (getConfigValue_('ADMIN_DEFAULT_PASSWORD') || 'changeme'));
 }
 function reformatScoutSystem() {
   formatScoutSystemSheets_(SpreadsheetApp.getActiveSpreadsheet());
@@ -456,6 +465,26 @@ function fmtDate_(d) {
   if (d instanceof Date) return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
   return String(d);
 }
+
+/** 處理時間欄位：Google Sheet 會把 14:00 存為 1899-12-30 14:00:00，要轉回 HH:mm */
+function fmtTime_(v) {
+  if (!v && v !== 0) return '';
+  if (v instanceof Date) {
+    var h = v.getHours();
+    var m = v.getMinutes();
+    return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+  }
+  var s = String(v);
+  if (s.indexOf('1899') === 0 || s.indexOf('1900') === 0) {
+    var d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      var h2 = d.getHours();
+      var m2 = d.getMinutes();
+      return (h2 < 10 ? '0' : '') + h2 + ':' + (m2 < 10 ? '0' : '') + m2;
+    }
+  }
+  return s;
+}
 function calcAge_(dob) {
   if (!dob) return 0;
   var b = new Date(dob);
@@ -576,7 +605,7 @@ function mapRegularMeetings_() {
     return {
       id: getField_(r, 'meetingId'), branchId: getField_(r, 'branchId'),
       title: getField_(r, 'title'), weekday: Number(getField_(r, 'weekday')) || 0,
-      startTime: getField_(r, 'startTime') || '', endTime: getField_(r, 'endTime') || '',
+      startTime: fmtTime_(getField_(r, 'startTime')), endTime: fmtTime_(getField_(r, 'endTime')),
       location: getField_(r, 'location') || '', enabled: parseBool_(getField_(r, 'enabled'))
     };
   });
