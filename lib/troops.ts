@@ -14,7 +14,7 @@ export const APPROVED_TROOPS: ApprovedTroop[] = [
   {
     id: '0082',
     name: '第82旅',
-    webAppUrl: 'https://script.google.com/macros/s/AKfycbypJw25bnKxDwYoSZBTWHjq2BIQ_eC4PVdS1MDSLlT7m6SZRUHX1MihkQcSAO8_Kq2F/exec',
+    webAppUrl: 'https://script.google.com/macros/s/AKfycbwATtCXH8t8bV5VOBVY-ocPJR1RgV4iQebJp_oo_NGV7-90xJZ0d4pAVlFf_f51FHYW/exec',
     status: 'testing',
     note: '測試旅團',
   },
