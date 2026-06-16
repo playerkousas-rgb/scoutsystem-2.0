@@ -145,6 +145,9 @@ export function apiToggleUser(userId: string) {
 export function apiCreateUser(p: { name: string; email: string; password?: string; role: string; branchId?: string }) {
   return apiMutate('createUser', p as any);
 }
+export function apiUpdateUserRole(userId: string, role: string) {
+  return apiMutate('updateUserRole', { userId, role });
+}
 
 // ==================== 小隊 / 六 ====================
 

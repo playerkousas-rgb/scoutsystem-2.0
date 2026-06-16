@@ -1,4 +1,8 @@
-import Link from 'next/link';
-export function SummaryCard({label,value,desc,tone='blue'}:{label:string;value:number|string;desc:string;tone?:'blue'|'green'|'red'|'gold'|'purple'}){return <div className="card summary"><span className={`badge ${tone}`}>{label}</span><h2>{value}</h2><p className="muted">{desc}</p></div>}
-export function FeatureCard({title,icon,text,href}:{title:string;icon:string;text:string;href:string}){return <Link href={href} className="card feature-card"><h3>{icon} {title}</h3><p className="muted">{text}</p><span className="btn block">進入</span></Link>}
-export function Placeholder({title,desc}:{title:string;desc:string}){return <div className="stack"><section className="hero"><span className="badge gold">UI 2.0</span><h1>{title}</h1><p>{desc}</p></section><section className="card"><p className="muted">此頁先完成 UI 命名及資訊架構；後台 GS / Apps Script 會以小白設定方式重新接入。</p></section></div>}
+export function SummaryCard({label,value,desc,tone='blue'}:{label:string;value:number|string;desc:string;tone?:'blue'|'green'|'red'|'gold'|'purple'}){
+  return <div className="card summary" style={{cursor:'pointer',textDecoration:'none',color:'inherit',display:'block'}}>
+    <span className={`badge ${tone}`}>{label}</span><h2>{value}</h2><p className="muted">{desc}</p>
+  </div>;
+}
+export function FeatureCard({title,icon,text,href}:{title:string;icon:string;text:string;href:string}){
+  return <a href={href} className="card feature-card"><h3>{icon} {title}</h3><p className="muted">{text}</p><span className="btn block">進入</span></a>;
+}

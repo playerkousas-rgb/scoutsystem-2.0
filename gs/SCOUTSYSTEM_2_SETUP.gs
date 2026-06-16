@@ -711,7 +711,10 @@ function buildDashboard(userId) {
 
   } else if (role === 'parent') {
     // 家長：只看自己 + 子女
-    var childIds = (user.childMemberIds || []);
+    // 重新從 mapUsers_ 取得完整的 user（含 childMemberIds）
+    var fullParentUser = allUsers.filter(function (u) { return u.id === userId; })[0];
+    if (fullParentUser) { state.users = [fullParentUser]; user = fullParentUser; }
+    var childIds = (fullParentUser ? fullParentUser.childMemberIds : []) || [];
     var children = allMembers.filter(function (m) {
       return childIds.indexOf(m.id) >= 0 || m.parentUserId === userId;
     });
@@ -802,6 +805,7 @@ function doGet(e) {
       case 'togglePaid': return wrap_(handleTogglePaid_(p), p);
       case 'decideApplication': return wrap_(handleDecideApplication_(p), p);
       case 'toggleUser': return wrap_(handleToggleUser_(p), p);
+      case 'updateUserRole': return wrap_(handleUpdateUserRole_(p), p);
       case 'createUser': return wrap_(handleCreateUser_(p), p);
       case 'createPatrol': return wrap_(handleCreatePatrol_(p), p);
       case 'togglePatrol': return wrap_(handleTogglePatrol_(p), p);
@@ -1012,7 +1016,7 @@ function handleDecideApplication_(p) {
       appendRowByHeaders_('Users', {
         userId: userId, name: name, email: email, password: 'changeme',
         role: role, branchId: branchId, memberId: '', approved: true,
-        createdAt: now_(), note: '由申請 ' + appId + ' 批核建立'
+        createdAt: now_(), note: '由 ' + (p.operatedBy || 'system') + ' 批核'
       });
 
       // 家長：綁定子女
@@ -1251,9 +1255,15 @@ function handleCreateUser_(p) {
   appendRowByHeaders_('Users', {
     userId: id, name: p.name || '', email: p.email || '', password: p.password || 'changeme',
     role: p.role || 'member', branchId: p.branchId || '', memberId: p.memberId || '',
-    approved: true, createdAt: now_(), note: p.note || ''
+    approved: true, createdAt: now_(), note: '由 ' + (p.operatedBy || 'system') + ' 建立'
   });
   writeAudit_(p.operatedBy || 'system', 'createUser', 'Users', id, (p.name || '') + ' ' + (p.role || ''));
+  return { success: true };
+}
+
+function handleUpdateUserRole_(p) {
+  updateCellByName_('Users', 'userId', p.userId, 'role', p.role || 'member');
+  writeAudit_(p.operatedBy || 'system', 'updateUserRole', 'Users', p.userId, 'role=' + (p.role || ''));
   return { success: true };
 }
 
