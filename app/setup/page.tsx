@@ -1,0 +1,4 @@
+export default function Setup(){return <div className="stack"><section className="hero"><span className="badge gold">小白模式</span><h1>旅團接入教學</h1><p>這頁給完全不懂程式的旅團管理員使用：照步驟建立 Sheet、貼上 Apps Script、執行 setup、填 Config、部署 Web App、提交 URL。</p></section><section className="grid-wide"><div className="card"><h3>你需要準備</h3><ul className="muted"><li>Google 帳號</li><li>空白 Google Sheet</li><li>旅團名稱及旅團號，例如 0082</li><li>管理員 Email</li><li>五個支部是否啟用</li></ul></div><div className="card"><h3>一鍵初始化</h3><ol className="muted"><li>開 Google Sheet</li><li>Extensions → Apps Script</li><li>貼上 GS 模板</li><li>Run `setupScoutSystem()`</li><li>到 Config 填資料</li><li>Deploy Web App</li><li>測試 `?action=health`</li><li>提交 URL</li></ol></div></section><section className="card"><h3>核心工作表</h3><pre className="code">SystemConfig, Roles, Branches, FieldSettings
+Users, Applications, Members, ParentChildLinks
+Events, EventReplies, LibraryBookmarks, Notices
+Payments, Plugins, AuditLogs</pre></section></div>}

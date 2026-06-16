@@ -1,0 +1,6 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { AppState, loadState, mutate, addAudit } from '@/lib/store';
+import { ROLE_LABEL } from '@/lib/model';
+import { getSession } from '@/lib/session';
+export default function Page(){const [s,setS]=useState<AppState|null>(null);useEffect(()=>setS(loadState()),[]);function toggle(id:string){const user=getSession();const next=mutate(st=>{const u=st.users.find(x=>x.id===id);if(u){u.approved=!u.approved;addAudit(st,user?.userId||'demo','toggleUser','Users',id,`${u.name} approved=${u.approved}`)}});setS(next)} if(!s)return <div className="card">載入中...</div>;return <div className="stack"><section className="hero"><span className="badge gold">使用者管理</span><h1>使用者管理</h1><p>Sheep / 0728 是技術測試帳號，權限等同最高，但不是旅團超管身份。</p></section><section className="card"><table className="table"><thead><tr><th>姓名</th><th>Email</th><th>角色</th><th>狀態</th><th>備註</th><th>操作</th></tr></thead><tbody>{s.users.map(u=><tr key={u.id}><td>{u.name}</td><td>{u.email}</td><td>{ROLE_LABEL[u.role]}</td><td>{u.approved?'啟用':'停用'}</td><td>{u.techTest?'技術測試帳號':''}</td><td><button className="btn" onClick={()=>toggle(u.id)}>{u.approved?'停用':'啟用'}</button></td></tr>)}</tbody></table></section></div>}

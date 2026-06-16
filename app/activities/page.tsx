@@ -1,0 +1,4 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { AppState, loadState } from '@/lib/store';
+export default function Activities(){const [s,setS]=useState<AppState|null>(null);useEffect(()=>setS(loadState()),[]);if(!s)return <div className="card">載入中...</div>;return <div className="stack"><section className="hero"><span className="badge gold">活動</span><h1>旅團 / 支部活動</h1><p>活動是整個旅團或支部要報名參與的事項，會進入行事曆並需要家長回覆。</p></section><section className="grid-wide">{s.events.filter(e=>e.status==='published').map(e=><div className="card" key={e.id}><span className={`badge ${e.kind==='notice_troop_participation'?'purple':'blue'}`}>{e.kind==='notice_troop_participation'?'圖書館轉入 · 旅團參與':'旅團 / 支部活動'}</span><h3>{e.title}</h3><p className="muted">{e.date} · {e.location}</p><p className="muted">{e.source}</p></div>)}</section></div>}

@@ -1,0 +1,47 @@
+# ScoutSystem 2.0 UI Prototype
+
+這是旅團管理系統 2.0 的重構版 UI，不覆寫 1.0。
+
+- UI first；後台 Google Sheet / Apps Script 之後以小白模式重建
+- 活動 / 通告 / 圖書館 / 行事曆按最新邏輯重整
+- 加入元件市場與轉駁中心
+- 插件統一使用 `u` 參數：區=字母碼，旅團=純數字碼
+
+## 開發
+
+```bash
+npm install
+npm run dev
+npm run build
+```
+
+
+## 第二輪新增
+
+- `/marketplace` 及 `/connectors` 直接讀取 `https://troop-router.vercel.app/api/registry.json`
+- 第 3 級元件按 `units.endpoints` 解析 URL
+- 元件開啟統一帶 `u`, `role`, `from`, `embed`
+- 後台加入小隊 / 六設定概念：`Patrols` Sheet、支部管理、旅團設定、成員資料及報名統計
+
+
+## 第三輪補充
+
+- 小童軍、深資童軍、樂行童軍預設沒有分隊
+- 幼童軍預設按顏色分隊 / 六
+- 童軍預設按動物名稱小隊
+- `Patrols` 加入隊長 / 副隊長 / 成員名單欄位（非必填）
+- `Members` 加入 `patrolRole`
+- Sheep / 0728 定義為技術測試帳號，權限等同最高，但不是超管或旅團管理層身份
+
+
+## 第四輪補充：小白 Sheet 友好化
+
+`gs/SCOUTSYSTEM_2_SETUP.gs` 已加入：
+
+- `README_新手必看` 工作表
+- Tab 顏色分類：README 藍、Config 黃、可改資料綠、Members 淺藍、系統灰、Audit 紅
+- 自動凍結表頭、自動調整欄寬
+- 在重要欄位加入 note 提示
+- 初始化後只顯示小白需要看的分頁：README、SystemConfig、Branches、Patrols、Members
+- 隱藏 Roles、FieldSettings、Users、Applications、Events、EventReplies、LibraryBookmarks、Notices、Plugins、AuditLogs
+- 上方選單 `ScoutSystem 2.0` 可顯示 / 隱藏進階分頁及重新格式化
