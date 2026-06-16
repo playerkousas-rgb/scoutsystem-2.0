@@ -1,43 +1,34 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { demoSession, setSession } from '@/lib/session';
-import { loadState, AppState } from '@/lib/store';
-import { ROLE_LABEL, Role } from '@/lib/model';
+import { setSession } from '@/lib/session';
+import Link from 'next/link';
 
-const quickRoles: Role[]=['super_admin','admin','group_leader','branch_leader','coach','parent','member'];
-
+type Tab='account'|'member';
 export default function Login(){
-  const router=useRouter();
-  const [state,setState]=useState<AppState|null>(null);
-  const [tab,setTab]=useState<'account'|'member'|'demo'>('account');
-  const [identifier,setIdentifier]=useState('');
-  useEffect(()=>setState(loadState()),[]);
-  function go(role:Role){ router.push(role==='parent'?'/parent':role==='member'?'/member':role==='admin'||role==='super_admin'?'/admin':'/leader'); }
-  function loginUser(user:any){
-    const sess={ userId:user.id, name:user.name, role:user.role, troopCode: state?.config.TROOP_CODE||'0082', troopName: state?.config.TROOP_NAME||'第82旅', branchId:user.branchId, memberId:user.memberId };
-    setSession(sess as any); go(user.role);
+  const router=useRouter(); const [troop,setTroop]=useState<any>(null); const [tab,setTab]=useState<Tab>('account'); const [identifier,setIdentifier]=useState(''); const [password,setPassword]=useState(''); const [msg,setMsg]=useState('');
+  useEffect(()=>{try{setTroop(JSON.parse(localStorage.getItem('scoutsystem2_selected_troop')||'null'))}catch{}},[]);
+  async function submit(){
+    setMsg('');
+    if(!troop?.webAppUrl){setMsg('請先在首頁選擇並連接旅團。');return;}
+    const id=identifier.trim();
+    if(tab==='member'&&!/^\d{10}$/.test(id)){setMsg('YMIS 必須是 10 位數字號碼。');return;}
+    try{
+      const url=new URL(troop.webAppUrl);
+      url.searchParams.set('action','login');
+      url.searchParams.set('identifier',id);
+      url.searchParams.set('password',password);
+      url.searchParams.set('loginType',tab);
+      const res=await fetch(url.toString(),{cache:'no-store'});
+      const text=await res.text();
+      if(/Access Denied|<html|<!doctype/i.test(text)) throw new Error('Apps Script Access Denied，請重新 Deploy 為 Anyone。');
+      const data=JSON.parse(text);
+      if(!data.success) throw new Error(data.error||'登入失敗');
+      const u=data.user;
+      setSession({userId:u.userId||u.id,name:u.name,role:u.role,troopCode:troop.id,troopName:troop.name,branchId:u.branchId,memberId:u.memberId,age:u.age});
+      router.push(u.dashboard || (u.role==='parent'?'/parent':u.role==='member'?'/member':u.role==='admin'||u.role==='super_admin'?'/admin':'/leader'));
+    }catch(e:any){setMsg('❌ '+(e?.message||String(e)));}
   }
-  function submit(){
-    if(!state)return;
-    const v=identifier.trim().toLowerCase();
-    if(tab==='member'){
-      const member=state.members.find(m=>m.ymNumber.toLowerCase()===v);
-      if(!member){ alert('找不到此 YMIS 成員。'); return; }
-      let user=state.users.find(u=>u.memberId===member.id);
-      if(!user){ alert('此成員未建立登入帳號，請先由管理員在成員資料庫 / 申請管理建立。'); return; }
-      loginUser(user); return;
-    }
-    const user=state.users.find(u=>u.email.toLowerCase()===v || u.id.toLowerCase()===v);
-    if(!user){ alert('找不到帳號。示範可輸入 admin@example.com / parent@example.com / member@example.com'); return; }
-    if(!user.approved){ alert('帳號未啟用。'); return; }
-    loginUser(user);
-  }
-  function demo(role:Role){ const s=demoSession(role); setSession(s); go(role); }
-  return <div className="stack"><section className="hero"><span className="badge gold">登入系統</span><h1>登入旅團</h1><p>2.0 沙盤已接同一份 Users / Members 資料。家長帳號會用 childMemberIds / Members.parentUserId 找子女；成員可用 YMIS 登入。</p></section>
-    <section className="card stack"><div className="row"><button className={`btn ${tab==='account'?'primary':''}`} onClick={()=>setTab('account')}>領袖及家長登入</button><button className={`btn ${tab==='member'?'primary':''}`} onClick={()=>setTab('member')}>成員 YMIS 登入</button><button className={`btn ${tab==='demo'?'primary':''}`} onClick={()=>setTab('demo')}>角色快速登入</button></div>
-      {tab!=='demo'?<><label>{tab==='member'?'YMIS 編號':'Email / User ID'}<input value={identifier} onChange={e=>setIdentifier(e.target.value)} placeholder={tab==='member'?'YM001':'admin@example.com'}/></label><button className="btn primary" onClick={submit}>登入</button><p className="muted">沙盤不檢查密碼；正式版會由 Apps Script login 驗證。</p></>:<section className="grid">{quickRoles.map(r=><button key={r} onClick={()=>demo(r)} className="card" style={{textAlign:'left',cursor:'pointer'}}><span className="badge blue">{r}</span><h3>{ROLE_LABEL[r]}</h3><p className="muted">快速切換示範角色</p><span className="btn block">登入</span></button>)}</section>}
-    </section>
-    {state&&<section className="card"><h3>沙盤帳號提示</h3><p className="muted">管理員：admin@example.com；家長：parent@example.com；成員 Email：member@example.com；成員 YMIS：YM001。</p></section>}
-  </div>
+  if(!troop) return <section className="hero"><span className="badge red">未選旅團</span><h1>請先連接旅團</h1><p>實測模式需要先在首頁填入 Apps Script URL。</p><Link className="btn primary" href="/">返回首頁</Link></section>;
+  return <div className="stack"><section className="hero"><span className="badge gold">登入 {troop.name}</span><h1>登入旅團</h1><p>這裡會呼叫你的 Apps Script `action=login`。成員登入的 YMIS 必須是 10 位數字。</p></section><section className="card stack"><div className="row"><button className={`btn ${tab==='account'?'primary':''}`} onClick={()=>setTab('account')}>領袖及家長登入</button><button className={`btn ${tab==='member'?'primary':''}`} onClick={()=>setTab('member')}>成員 YMIS 登入</button></div><label>{tab==='member'?'YMIS 十位數字':'Email / User ID'}<input value={identifier} onChange={e=>setIdentifier(e.target.value)} placeholder={tab==='member'?'1234567890':'admin@example.com'}/></label><label>密碼<input type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label><button className="btn primary" onClick={submit}>登入</button>{msg&&<p className="badge red">{msg}</p>}</section></div>
 }
