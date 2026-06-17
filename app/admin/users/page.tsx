@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { AppState, loadState } from '@/lib/store';
 import { apiToggleUser, apiCreateUser, apiUpdateUserRole, apiDeleteUser } from '@/lib/api';
 import { ROLE_LABEL, branches, LEADER_ROLES } from '@/lib/model';
+import { checkEditPermission, assignableRoles } from '@/lib/permissions';
+import { getSession } from '@/lib/session';
 import type { Role } from '@/lib/model';
 
 export default function Page(){
@@ -15,6 +17,7 @@ export default function Page(){
   const [name,setName]=useState('');const [email,setEmail]=useState('');const [pw,setPw]=useState('changeme');
   const [role,setRole]=useState<Role>('parent');const [branchId,setBranchId]=useState('');
   const [loading,setLoading]=useState(false);
+  const session=getSession();
 
   useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message))},[]);
 
@@ -29,8 +32,10 @@ export default function Page(){
 
   if(!s)return <div className="card">{err||'載入中...'}</div>;
 
-  // super_admin(技術測試) 和 troop_super(超管) 不能從前端改角色
-  function isLocked(u:any){return u.techTest || u.role==='troop_super';}
+  const myRole=session?.role||'guest';
+  const myBranchId=session?.branchId||'';
+  const myUserId=session?.userId||'';
+  const assignable=assignableRoles(myRole);
 
   const filtered=s.users.filter(u=>{
     if(filterRole!=='all'&&u.role!==filterRole)return false;
@@ -42,7 +47,7 @@ export default function Page(){
   });
 
   return <div className="stack">
-    <section className="hero"><span className="badge gold">使用者管理</span><h1>使用者管理</h1><p>篩選、查看、啟用/停用、修改角色、刪除帳號。</p></section>
+    <section className="hero"><span className="badge gold">使用者管理</span><h1>使用者管理</h1><p>篩選、查看、啟用/停用、修改角色、刪除帳號。上級可改下級。</p></section>
     {err&&<p className="badge red">{err}</p>}
 
     <section className="card stack">
@@ -78,11 +83,8 @@ export default function Page(){
         <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email *"/>
         <input value={pw} onChange={e=>setPw(e.target.value)} placeholder="密碼"/>
         <select value={role} onChange={e=>setRole(e.target.value as Role)}>
-          <option value="admin">管理員</option>
-          <option value="group_leader">團長</option>
-          <option value="branch_leader">支部領袖</option>
-          <option value="coach">教練員</option>
-          <option value="parent">家長</option>
+          {assignable.map(r=><option key={r} value={r}>{ROLE_LABEL[r as Role]}</option>)}
+          {assignable.length===0&&<option value="member">成員</option>}
         </select>
         {(LEADER_ROLES.includes(role))&&<select value={branchId} onChange={e=>setBranchId(e.target.value)}><option value="">選擇支部</option>{branches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select>}
       </div>
@@ -91,30 +93,36 @@ export default function Page(){
 
     <section className="card"><table className="table">
       <thead><tr><th>姓名</th><th>Email</th><th>角色</th><th>支部</th><th>狀態</th><th>操作</th></tr></thead>
-      <tbody>{filtered.map(u=><tr key={u.id}>
-        <td>{u.name}{u.techTest&&<span className="badge blue" style={{marginLeft:4}}>技術</span>}{u.role==='troop_super'&&<span className="badge gold" style={{marginLeft:4}}>超管</span>}</td>
-        <td>{u.email||'—'}</td>
-        <td>
-          {isLocked(u) ? (
-            <span className="badge blue">{ROLE_LABEL[u.role as Role] || u.role}（僅 Sheet 可改）</span>
-          ) : (
-            <select value={u.role} onChange={e=>changeRole(u.id,e.target.value as Role)} style={{fontSize:'0.9em'}}>
-              <option value="admin">管理員</option>
-              <option value="group_leader">團長</option>
-              <option value="branch_leader">支部領袖</option>
-              <option value="coach">教練員</option>
-              <option value="parent">家長</option>
-              <option value="member">成員</option>
-            </select>
-          )}
-        </td>
-        <td>{branches.find(b=>b.id===u.branchId)?.short||'-'}</td>
-        <td>{u.approved?<span className="badge green">啟用</span>:<span className="badge red">停用</span>}</td>
-        <td>
-          <button className="btn" onClick={()=>toggle(u.id)}>{u.approved?'停用':'啟用'}</button>
-          <button className="btn" style={{marginLeft:4,color:'#d93025'}} onClick={()=>del(u.id,u.name)}>刪除</button>
-        </td>
-      </tr>)}</tbody>
+      <tbody>{filtered.map(u=>{
+        const perm=checkEditPermission(myRole,myBranchId,myUserId,u.role,u.branchId||'',u.id);
+        const canChangeRole=perm.canChangeRole && assignable.includes(u.role);
+        return <tr key={u.id}>
+          <td>{u.name}{u.techTest&&<span className="badge blue" style={{marginLeft:4}}>技術</span>}{u.role==='troop_super'&&<span className="badge gold" style={{marginLeft:4}}>超管</span>}</td>
+          <td>{u.email||'—'}</td>
+          <td>
+            {canChangeRole ? (
+              <select value={u.role} onChange={e=>changeRole(u.id,e.target.value as Role)} style={{fontSize:'0.9em'}}>
+                <option value={u.role} style={{fontWeight:'bold'}}>{ROLE_LABEL[u.role as Role]}</option>
+                {assignable.filter(r=>r!==u.role).map(r=><option key={r} value={r}>{ROLE_LABEL[r as Role]}</option>)}
+              </select>
+            ) : (
+              <span className="badge blue">{ROLE_LABEL[u.role as Role] || u.role}</span>
+            )}
+          </td>
+          <td>{branches.find(b=>b.id===u.branchId)?.short||'-'}</td>
+          <td>{u.approved?<span className="badge green">啟用</span>:<span className="badge red">停用</span>}</td>
+          <td>
+            {perm.canEdit ? (
+              <>
+                <button className="btn" onClick={()=>toggle(u.id)}>{u.approved?'停用':'啟用'}</button>
+                <button className="btn" style={{marginLeft:4,color:'#d93025'}} onClick={()=>del(u.id,u.name)}>刪除</button>
+              </>
+            ) : (
+              <span className="muted" style={{fontSize:'0.8em'}}>無權</span>
+            )}
+          </td>
+        </tr>;
+      })}</tbody>
     </table>
     <p className="muted">{filtered.length} / {s.users.length} 個使用者</p>
     </section>

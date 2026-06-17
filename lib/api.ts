@@ -173,7 +173,7 @@ export function apiImportBookmark(p: { title: string; mode: string; source?: str
 export function apiDeleteBookmark(bookmarkId: string) {
   return apiMutate('deleteBookmark', { bookmarkId });
 }
-export function apiUpdateBookmark(p: { bookmarkId: string; title?: string; internalDeadline?: string; branchTags?: string; note?: string; mode?: string; activityType?: string; audienceTags?: string; fee?: string }) {
+export function apiUpdateBookmark(p: { bookmarkId: string; title?: string; source?: string; officialDeadline?: string; internalDeadline?: string; branchTags?: string; audienceTags?: string; fee?: string; eligibility?: string; activityType?: string; mode?: string; note?: string; targetText?: string; status?: string }) {
   return apiMutate('updateBookmark', p as any);
 }
 

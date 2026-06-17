@@ -1389,27 +1389,37 @@ function handleImportBookmark_(p) {
   var id = uid_('bkm');
   var mode = p.mode || 'informational';
   var convertedEventId = '';
-  var status = 'published';
+  var status = mode === 'troop_participation' ? 'converted' : 'published';
   if (mode === 'troop_participation') {
     convertedEventId = uid_('e');
-    status = 'converted';
     var members = readTable_('Members');
     var targets = members.map(function (m) { return getField_(m, 'memberId'); }).join(',');
     appendRowByHeaders_('Events', {
       eventId: convertedEventId, title: p.title || '', scope: 'troop', branchId: '',
-      date: p.date || p.internalDeadline || '', location: '待定',
-      kind: 'notice_troop_participation', status: 'published', source: '圖書館轉入',
+      date: p.internalDeadline || p.officialDeadline || '', location: '待定',
+      kind: 'notice_troop_participation', status: 'published', source: '圖書館引入',
       fee: p.fee || '', targetMemberIds: targets, createdBy: p.operatedBy || '',
-      createdAt: now_(), note: '由圖書館標記轉入'
+      createdAt: now_(), note: '由圖書館引入'
     });
   }
   appendRowByHeaders_('LibraryBookmarks', {
-    bookmarkId: id, title: p.title || '', source: p.source || 'Scout Circulars',
-    officialDeadline: p.officialDeadline || '', internalDeadline: p.internalDeadline || '',
-    mode: mode, activityType: p.activityType || '', eligibility: p.eligibility || '',
-    fee: p.fee || '', branchTags: p.branchTags || '全旅', status: status,
-    convertedEventId: convertedEventId, createdBy: p.operatedBy || '',
-    createdAt: now_(), note: p.note || ''
+    bookmarkId: id,
+    title: p.title || '',
+    source: p.source || '',
+    officialDeadline: p.officialDeadline || '',
+    internalDeadline: p.internalDeadline || '',
+    mode: mode,
+    activityType: p.activityType || '',
+    targetText: p.targetText || p.eligibility || '',
+    eligibility: p.eligibility || '',
+    fee: p.fee || '',
+    branchTags: p.branchTags || '全旅',
+    audienceTags: p.audienceTags || '',
+    status: status,
+    convertedEventId: convertedEventId,
+    createdBy: p.operatedBy || '',
+    createdAt: now_(),
+    note: p.note || ''
   });
   writeAudit_(p.operatedBy || 'system', 'importBookmark', 'LibraryBookmarks', id, (p.title || '') + ' → ' + mode + ' (by ' + (p.operatedBy || 'system') + ')');
   return { success: true };
@@ -1594,10 +1604,12 @@ function autoRepairParentLinks_() {
 // ==================== Library Bookmark Update / Delete ====================
 
 function handleUpdateBookmark_(p) {
-  if (p.title) updateCellByName_('LibraryBookmarks', 'bookmarkId', p.bookmarkId, 'title', p.title);
-  if (p.internalDeadline) updateCellByName_('LibraryBookmarks', 'bookmarkId', p.bookmarkId, 'internalDeadline', p.internalDeadline);
-  if (p.branchTags) updateCellByName_('LibraryBookmarks', 'bookmarkId', p.bookmarkId, 'branchTags', p.branchTags);
-  if (p.note) updateCellByName_('LibraryBookmarks', 'bookmarkId', p.bookmarkId, 'note', p.note);
+  var fields = ['title', 'source', 'officialDeadline', 'internalDeadline', 'mode', 'activityType', 'targetText', 'eligibility', 'fee', 'branchTags', 'audienceTags', 'status', 'note'];
+  fields.forEach(function (f) {
+    if (p[f] !== undefined && p[f] !== null && p[f] !== '') {
+      updateCellByName_('LibraryBookmarks', 'bookmarkId', p.bookmarkId, f, p[f]);
+    }
+  });
   writeAudit_(p.operatedBy || 'system', 'updateBookmark', 'LibraryBookmarks', p.bookmarkId, '');
   return { success: true };
 }

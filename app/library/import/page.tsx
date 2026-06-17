@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AppState, loadState, Bookmark } from '@/lib/store';
-import { apiImportBookmark, apiUpdateBookmark } from '@/lib/api';
+import { apiImportBookmark, apiUpdateBookmark, apiDeleteBookmark } from '@/lib/api';
 import { branches } from '@/lib/model';
 import { getSession } from '@/lib/session';
 
@@ -10,10 +10,11 @@ const AUDIENCE_OPTIONS = ['全旅', '領袖', '成年成員', '小童軍', '幼�
 const ACTIVITY_TYPES = ['訓練班', '比賽', '服務', '課程', '活動', '會議', '營會', '其他'];
 
 export default function Import(){
-  const [s,setS]=useState<AppState|null>(null);const [err,setErr]=useState('');
-  const [editingId,setEditingId]=useState<string|null>(null);
+  const [s,setS]=useState<AppState|null>(null);
+  const [err,setErr]=useState('');
   const [msg,setMsg]=useState('');
   const [loading,setLoading]=useState(false);
+  const [editingId,setEditingId]=useState<string|null>(null);
   const session=getSession();
   const canImport=session && ['super_admin','troop_super','admin','group_leader','branch_leader','coach'].includes(session.role);
 
@@ -29,15 +30,19 @@ export default function Import(){
   const [selectedAudience,setSelectedAudience]=useState<string[]>([]);
   const [mode,setMode]=useState<'informational'|'troop_participation'>('informational');
 
+  // Edit form
+  const [eTitle,setETitle]=useState('');
+  const [eSource,setESource]=useState('');
+  const [eOfficialDeadline,setEOfficialDeadline]=useState('');
+  const [eInternalDeadline,setEInternalDeadline]=useState('');
+  const [eFee,setEFee]=useState('');
+  const [eEligibility,setEEligibility]=useState('');
+  const [eActivityType,setEActivityType]=useState('');
+  const [eBranches,setEBranches]=useState<string[]>([]);
+  const [eAudience,setEAudience]=useState<string[]>([]);
+  const [eMode,setEMode]=useState<'informational'|'troop_participation'>('informational');
+
   useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message))},[]);
-
-  function toggleBranch(id:string){setSelectedBranches(prev=>prev.includes(id)?prev.filter(b=>b!==id):[...prev,id])}
-  function toggleAudience(v:string){setSelectedAudience(prev=>prev.includes(v)?prev.filter(x=>x!==v):[...prev,v])}
-
-  function resetForm(){
-    setTitle('');setSource('');setOfficialDeadline('');setInternalDeadline('');setFee('');
-    setEligibility('');setActivityType('');setSelectedBranches([]);setSelectedAudience([]);setMode('informational');
-  }
 
   async function save(){
     setErr('');setMsg('');
@@ -45,24 +50,55 @@ export default function Import(){
     setLoading(true);
     try{
       const branchTags=selectedBranches.length>0?selectedBranches.map(id=>branches.find(b=>b.id===id)?.short||id).join(','):'全旅';
-      const audienceTags=selectedAudience.join(',')||'';
+      const audienceTags=selectedAudience.join(',');
       await apiImportBookmark({title,mode,source,officialDeadline,internalDeadline,fee,eligibility,activityType,branchTags,audienceTags});
       const {loadState}=await import('@/lib/store');
       setS(await loadState());
       setMsg(mode==='troop_participation'?'✅ 已轉成活動並加入行事曆':'✅ 已加入資訊性通告');
-      resetForm();
+      setTitle('');setSource('');setOfficialDeadline('');setInternalDeadline('');setFee('');
+      setEligibility('');setActivityType('');setSelectedBranches([]);setSelectedAudience([]);setMode('informational');
     }catch(e:any){setErr(e.message)}finally{setLoading(false)}
   }
 
-  async function updateBookmark(id:string,patch:any){
+  function startEdit(b:Bookmark){
+    setEditingId(b.id);
+    setETitle(b.title||'');
+    setESource(b.source||'');
+    setEOfficialDeadline(b.officialDeadline||'');
+    setEInternalDeadline(b.internalDeadline||'');
+    setEFee(b.fee||'');
+    setEEligibility(b.eligibility||b.targetText||'');
+    setEActivityType(b.activityType||'');
+    setEBranches(b.branchTags||[]);
+    setEAudience(b.audienceTags||[]);
+    setEMode(b.mode);
+  }
+
+  async function saveEdit(){
+    if(!editingId)return;
     setLoading(true);setErr('');
     try{
-      await apiUpdateBookmark({bookmarkId:id,...patch});
+      await apiUpdateBookmark({
+        bookmarkId:editingId,
+        title:eTitle,source:eSource,officialDeadline:eOfficialDeadline,
+        internalDeadline:eInternalDeadline,fee:eFee,eligibility:eEligibility,
+        activityType:eActivityType,mode:eMode,
+        branchTags:eBranches.length>0?eBranches.join(','):'全旅',
+        audienceTags:eAudience.join(','),
+      });
       const {loadState}=await import('@/lib/store');
       setS(await loadState());setEditingId(null);
       setMsg('✅ 已更新');
     }catch(e:any){setErr(e.message)}finally{setLoading(false)}
   }
+
+  async function del(id:string,title:string){
+    if(!confirm(`確定刪除「${title}」？`))return;
+    setLoading(true);setErr('');
+    try{await apiDeleteBookmark(id);const {loadState}=await import('@/lib/store');setS(await loadState());setMsg('✅ 已刪除')}catch(e:any){setErr(e.message)}finally{setLoading(false)}
+  }
+
+  if(!s)return <div className="card">{err||'載入中...'}</div>;
 
   return <div className="stack">
     <section className="hero">
@@ -76,7 +112,7 @@ export default function Import(){
 
     {!canImport&&<section className="card"><p className="badge red">只有領袖可以引入通告。</p></section>}
 
-    {canImport&&<section className="card stack">
+    {canImport&&!editingId&&<section className="card stack">
       <h3>引入通告</h3>
       <p className="muted">從圖書館複製通告資料填入。圖書館已抽取的資料直接帶入，領袖確認後加上分類。</p>
       <label>通告標題<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="例如：皮藝坊 - 貓頭鷹及小提琴皮革製造"/></label>
@@ -98,14 +134,14 @@ export default function Import(){
       <div>
         <strong>適用支部：</strong>
         <div className="row" style={{flexWrap:'wrap',gap:6,marginTop:4}}>
-          {branches.map(b=><button key={b.id} type="button" className={`btn ${selectedBranches.includes(b.id)?'primary':''}`} onClick={()=>toggleBranch(b.id)} style={{fontSize:'0.85em'}}>{b.short}</button>)}
+          {branches.map(b=><button key={b.id} type="button" className={`btn ${selectedBranches.includes(b.id)?'primary':''}`} onClick={()=>{setSelectedBranches(prev=>prev.includes(b.id)?prev.filter(x=>x!==b.id):[...prev,b.id])}} style={{fontSize:'0.85em'}}>{b.short}</button>)}
         </div>
         <p className="muted">不選 = 全旅。</p>
       </div>
       <div>
         <strong>對象標籤：</strong>
         <div className="row" style={{flexWrap:'wrap',gap:6,marginTop:4}}>
-          {AUDIENCE_OPTIONS.map(a=><button key={a} type="button" className={`btn ${selectedAudience.includes(a)?'primary':''}`} onClick={()=>toggleAudience(a)} style={{fontSize:'0.85em'}}>{a}</button>)}
+          {AUDIENCE_OPTIONS.map(a=><button key={a} type="button" className={`btn ${selectedAudience.includes(a)?'primary':''}`} onClick={()=>{setSelectedAudience(prev=>prev.includes(a)?prev.filter(x=>x!==a):[...prev,a])}} style={{fontSize:'0.85em'}}>{a}</button>)}
         </div>
       </div>
       <label>接入模式
@@ -117,10 +153,52 @@ export default function Import(){
       <button className="btn primary" disabled={loading} onClick={save}>{loading?'引入中...':'引入此通告'}</button>
     </section>}
 
-    {s&&s.bookmarks.length>0&&<section className="card">
-      <h3>已引入通告</h3>
+    {editingId&&<section className="card stack">
+      <h3>編輯通告</h3>
+      <label>通告標題<input value={eTitle} onChange={e=>setETitle(e.target.value)}/></label>
+      <div className="grid">
+        <label>來源<input value={eSource} onChange={e=>setESource(e.target.value)}/></label>
+        <label>費用<input value={eFee} onChange={e=>setEFee(e.target.value)}/></label>
+      </div>
+      <div className="grid">
+        <label>原通告截止<input type="date" value={eOfficialDeadline} onChange={e=>setEOfficialDeadline(e.target.value)}/></label>
+        <label>本旅截止<input type="date" value={eInternalDeadline} onChange={e=>setEInternalDeadline(e.target.value)}/></label>
+      </div>
+      <label>參加資格 / 對象<input value={eEligibility} onChange={e=>setEEligibility(e.target.value)}/></label>
+      <label>活動類型
+        <select value={eActivityType} onChange={e=>setEActivityType(e.target.value)}>
+          <option value="">— 選擇 —</option>
+          {ACTIVITY_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+        </select>
+      </label>
+      <div>
+        <strong>適用支部：</strong>
+        <div className="row" style={{flexWrap:'wrap',gap:6,marginTop:4}}>
+          {branches.map(b=><button key={b.id} type="button" className={`btn ${eBranches.includes(b.short)?'primary':''}`} onClick={()=>setEBranches(prev=>prev.includes(b.short)?prev.filter(x=>x!==b.short):[...prev,b.short])} style={{fontSize:'0.85em'}}>{b.short}</button>)}
+        </div>
+      </div>
+      <div>
+        <strong>對象標籤：</strong>
+        <div className="row" style={{flexWrap:'wrap',gap:6,marginTop:4}}>
+          {AUDIENCE_OPTIONS.map(a=><button key={a} type="button" className={`btn ${eAudience.includes(a)?'primary':''}`} onClick={()=>setEAudience(prev=>prev.includes(a)?prev.filter(x=>x!==a):[...prev,a])} style={{fontSize:'0.85em'}}>{a}</button>)}
+        </div>
+      </div>
+      <label>接入模式
+        <select value={eMode} onChange={e=>setEMode(e.target.value as any)}>
+          <option value="informational">📢 資訊性</option>
+          <option value="troop_participation">🏕️ 旅團參與</option>
+        </select>
+      </label>
+      <div className="row">
+        <button className="btn primary" disabled={loading} onClick={saveEdit}>{loading?'儲存中...':'儲存'}</button>
+        <button className="btn" onClick={()=>setEditingId(null)}>取消</button>
+      </div>
+    </section>}
+
+    {s.bookmarks.length>0&&<section className="card">
+      <h3>已引入通告（{s.bookmarks.length}）</h3>
       <table className="table">
-        <thead><tr><th>標題</th><th>來源</th><th>類型</th><th>對象</th><th>支部</th><th>對象標籤</th><th>截止</th><th>費用</th><th>模式</th><th>引入者</th></tr></thead>
+        <thead><tr><th>標題</th><th>來源</th><th>類型</th><th>對象</th><th>支部</th><th>對象標籤</th><th>截止</th><th>費用</th><th>模式</th><th>引入者</th><th>操作</th></tr></thead>
         <tbody>{s.bookmarks.map(b=><tr key={b.id}>
           <td>{b.title}</td>
           <td>{b.source||'—'}</td>
@@ -132,6 +210,12 @@ export default function Import(){
           <td>{b.fee||'—'}</td>
           <td><span className={`badge ${b.mode==='troop_participation'?'purple':'gold'}`}>{b.mode==='troop_participation'?'旅團參與':'資訊性'}</span></td>
           <td>{b.importedBy||'—'}</td>
+          <td>
+            {canImport?<>
+              <button className="btn" style={{fontSize:'0.8em'}} onClick={()=>startEdit(b)}>✏️</button>
+              <button className="btn" style={{fontSize:'0.8em',marginLeft:2,color:'#d93025'}} onClick={()=>del(b.id,b.title)}>🗑️</button>
+            </>:<span className="muted" style={{fontSize:'0.8em'}}>只讀</span>}
+          </td>
         </tr>)}</tbody>
       </table>
     </section>}
