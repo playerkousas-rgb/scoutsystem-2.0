@@ -51,8 +51,11 @@ export default function Page(){
     if(!spDate){setErr('請選日期');return;}
     setErr('');
     try{
-      const scope = spBranches.length===0||spBranches.length===5 ? 'troop' : 'branch';
-      const branchId = spBranches.length===1 ? spBranches[0] : '';
+      // 0 selected = 全旅; 1 = 支部; 2+ = 跨支部
+      let scope = 'troop';
+      let branchId = '';
+      if(spBranches.length===1){scope='branch';branchId=spBranches[0];}
+      else if(spBranches.length>=2){scope='troop';} // 跨支部設為全旅活動
       await apiCreateEvent({
         title:spTitle,
         scope:scope as any,
@@ -148,7 +151,7 @@ export default function Page(){
           <div className="row" style={{flexWrap:'wrap',gap:6,marginTop:4}}>
             {branches.map(b=><button key={b.id} type="button" className={`btn ${spBranches.includes(b.id)?'primary':''}`} onClick={()=>toggleBranch(b.id,setSpBranches)} style={{fontSize:'0.85em'}}>{b.short}</button>)}
           </div>
-          <p className="muted">不選 = 全旅。選一個 = 支部活動。選多個會設為全旅。</p>
+          <p className="muted">不選 = 全旅。選一個 = 支部活動。選多個 = 跨支部活動（全旅可見）。</p>
         </div>
         <button className="btn primary" onClick={addSpecial}>加入行事曆</button>
       </section>

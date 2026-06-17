@@ -118,10 +118,10 @@ function getInitialSheets_() {
     Branches: [
       ['branchId', 'name', 'enabled', 'note'],
       ['b1', '小童軍支部', true, '預設沒有分隊。'],
-      ['b2', '幼童軍支部', true, '按顏色分隊 / 六。'],
+      ['b2', '幼童軍支部', true, '按顏色分隊。'],
       ['b3', '童軍支部', true, '按動物名稱小隊（英文）。'],
-      ['b4', '深資童軍支部', true, '此支部啟用中（TRUE），但深資童軍預設沒有小隊 / 六。如需要可自行在 Patrols 新增。'],
-      ['b5', '樂行童軍支部', true, '此支部啟用中（TRUE），但樂行童軍預設沒有小隊 / 六。如需要可自行在 Patrols 新增。']
+      ['b4', '深資童軍支部', true, '此支部啟用中（TRUE），但深資童軍預設沒有小隊。如需要可自行在 Patrols 新增。'],
+      ['b5', '樂行童軍支部', true, '此支部啟用中（TRUE），但樂行童軍預設沒有小隊。如需要可自行在 Patrols 新增。']
     ],
     Patrols: [
       ['patrolId', 'branchId', 'name', 'shortName', 'leaderMemberId', 'deputyLeaderMemberId', 'memberIds', 'enabled', 'order', 'note'],
@@ -139,7 +139,7 @@ function getInitialSheets_() {
       ['name', '姓名', true, true, '成員顯示姓名。'],
       ['dateOfBirth', '出生日期', true, false, '用於判斷 18 歲以下 / 以上。'],
       ['emergencyContactPhone', '緊急聯絡電話', true, false, '報名匯出用。'],
-      ['patrolId', '小隊 / 六', true, false, '不適用支部可留空。'],
+      ['patrolId', '小隊', true, false, '不適用支部可留空。'],
       ['patrolRole', '隊內身份', true, false, 'leader / deputy / member / 空白。']
     ],
     Users: [
@@ -152,7 +152,7 @@ function getInitialSheets_() {
     Members: [
       ['memberId', 'ymNumber', 'password', 'name', 'branchId', 'patrolId', 'patrolRole', 'dateOfBirth', 'parentUserId', 'emergencyContactName', 'emergencyContactPhone', 'active', 'note'],
       ['m_ex1', '1234567890', '1234567890', '陳大文（範例）', 'b3', 'p5', 'leader', '2012-03-15', '', '陳太', '9123 4567', true, '範例：童軍支部成員，TIGER 小隊隊長。請修改或刪除。'],
-      ['m_ex2', '2345678901', '2345678901', '李小美（範例）', 'b2', 'p1', 'member', '2015-07-20', '', '李太', '9876 5432', true, '範例：幼童軍支部成員，RED 六。請修改或刪除。']
+      ['m_ex2', '2345678901', '2345678901', '李小美（範例）', 'b2', 'p1', 'member', '2015-07-20', '', '李太', '9876 5432', true, '範例：幼童軍支部成員，RED 隊。請修改或刪除。']
     ],
     Events: [
       ['eventId', 'title', 'scope', 'branchId', 'date', 'location', 'kind', 'status', 'source', 'fee', 'targetMemberIds', 'createdBy', 'createdAt', 'note']
@@ -164,7 +164,7 @@ function getInitialSheets_() {
       ['bookmarkId', 'circularKey', 'title', 'source', 'region', 'circularDate', 'sourceUrl', 'attachmentUrl', 'officialDeadline', 'internalDeadline', 'mode', 'activityType', 'targetText', 'eligibility', 'fee', 'branchTags', 'audienceTags', 'status', 'convertedEventId', 'ownerUserId', 'createdBy', 'createdAt', 'note']
     ],
     Announcements: [
-      ['announcementId', 'title', 'source', 'month', 'publishDate', 'branchTags', 'folderUrl', 'documentUrl', 'createdAt', 'status', 'note']
+      ['announcementId', 'fileId', 'fileName', 'fileUrl', 'fileSize', 'branchTags', 'audienceTags', 'status', 'updatedAt', 'note']
     ],
     RegularMeetings: [
       ['meetingId', 'branchId', 'title', 'weekday', 'startTime', 'endTime', 'location', 'enabled', 'note'],
@@ -213,7 +213,7 @@ function setupReadmeSheet_(ss) {
     ['你現在需要做的事', '照順序完成。'],
     ['1', '到黃色 SystemConfig 填 TROOP_CODE、TROOP_NAME、ADMIN_EMAIL。'],
     ['2', '到綠色 Branches 確認支部。enabled = TRUE 表示支部啟用，不是指小隊。'],
-    ['3', '到綠色 Patrols 修改小隊 / 六名稱（童軍預設英文 TIGER / SEAGULL / WOLF）。'],
+    ['3', '到綠色 Patrols 修改小隊名稱（童軍預設英文 TIGER / SEAGULL / WOLF）。'],
     ['4', '到藍色 Members 輸入成員。每個必須填 ymNumber（10位數字）和 password（密碼）。範例已提供兩行。'],
     ['5', '上方選單 ScoutSystem 2.0 → 重新建立管理員帳號。會根據 ADMIN_EMAIL 自動建立 admin，不需手動打開 Users。'],
     ['6', '回到此 Apps Script 編輯器 → 右上方「部署」→「網頁應用程式」→ 執行身分：我 → 誰可以存取：任何人 → 部署。'],
@@ -720,10 +720,50 @@ function buildDashboard(userId) {
     plugins: [], audits: [], config: config
   };
 
-  // Always load announcement PDFs (for all logged-in users)
+  // Load announcement PDFs and filter by user role
   try {
     var pdfResult = apiListAnnouncementPdfs();
-    if (pdfResult.success) state.announcementPdfs = pdfResult.files || [];
+    if (pdfResult.success) {
+      var allPdfs = pdfResult.files || [];
+      // Filter by user's branches and audience
+      if (role === 'admin' || role === 'super_admin' || role === 'troop_super') {
+        state.announcementPdfs = allPdfs;
+      } else if (role === 'member') {
+        var myBranchShort = '';
+        var myMember = allMembers.filter(function(m){return m.id === userId || m.id === (user.memberId||'');})[0];
+        if (myMember) {
+          // Find branch short name
+          var branchRow = readTable_('Branches').filter(function(b){return getField_(b,'branchId')===myMember.branchId;})[0];
+          myBranchShort = branchRow ? getField_(branchRow,'name') : myMember.branchId;
+        }
+        state.announcementPdfs = allPdfs.filter(function(pdf) {
+          if (!pdf.visible) return false;
+          if (!pdf.branchTags || pdf.branchTags.indexOf('全旅') >= 0) return true;
+          return pdf.branchTags.indexOf(myBranchShort) >= 0 || pdf.branchTags.indexOf(myMember ? myMember.branchId : '') >= 0;
+        });
+      } else if (role === 'parent') {
+        // Show PDFs for any branch the children belong to
+        var childBranchShorts = children.map(function(m) {
+          var br = readTable_('Branches').filter(function(b){return getField_(b,'branchId')===m.branchId;})[0];
+          return br ? getField_(br,'name') : m.branchId;
+        });
+        state.announcementPdfs = allPdfs.filter(function(pdf) {
+          if (!pdf.visible) return false;
+          if (!pdf.branchTags || pdf.branchTags.indexOf('全旅') >= 0) return true;
+          return childBranchShorts.some(function(bs){return pdf.branchTags.indexOf(bs) >= 0;});
+        });
+      } else if (role === 'group_leader' || role === 'branch_leader' || role === 'coach') {
+        var leaderBranchRow = readTable_('Branches').filter(function(b){return getField_(b,'branchId')===branchId;})[0];
+        var leaderBranchName = leaderBranchRow ? getField_(leaderBranchRow,'name') : branchId;
+        state.announcementPdfs = allPdfs.filter(function(pdf) {
+          if (!pdf.visible) return false;
+          if (!pdf.branchTags || pdf.branchTags.indexOf('全旅') >= 0) return true;
+          return pdf.branchTags.indexOf(leaderBranchName) >= 0 || pdf.branchTags.indexOf(branchId) >= 0;
+        });
+      } else {
+        state.announcementPdfs = allPdfs.filter(function(pdf){return pdf.visible;});
+      }
+    }
   } catch (e) {}
 
   // 未登入或無效使用者：只回 config
@@ -918,6 +958,7 @@ function doGet(e) {
       case 'toggleRegularMeeting': return wrap_(handleToggleRegularMeeting_(p), p);
       case 'createRegularMeeting': return wrap_(handleCreateRegularMeeting_(p), p);
       case 'toggleMeetingCancel': return wrap_(handleToggleMeetingCancel_(p), p);
+      case 'updatePdfTags': return wrap_(handleUpdatePdfTags_(p), p);
       case 'saveConfig': return wrap_(handleSaveConfig_(p), p);
       case 'addAnnouncement': return wrap_(addAnnouncement(p), p);
       case 'getAnnouncements': return json(getAnnouncements(p));
@@ -1486,7 +1527,7 @@ function handleDeleteUser_(p) {
   return { success: true };
 }
 
-// ==================== 寫入：小隊 / 六 ====================
+// ==================== 寫入：小隊 ====================
 
 function handleCreatePatrol_(p) {
   var id = uid_('p');
@@ -2069,22 +2110,72 @@ function fixEventRepliesSheet() {
 function apiListAnnouncementPdfs() {
   var folderInput = getConfigValue_('ANNOUNCEMENT_FOLDER_ID');
   if (!folderInput) return { success: false, error: '未設定 ANNOUNCEMENT_FOLDER_ID' };
-  // Accept both full URL and raw ID
   var folderId = folderInput;
   if (folderInput.indexOf('/folders/') >= 0) {
     folderId = folderInput.split('/folders/')[1].split('?')[0].split('&')[0];
   }
   var folder = DriveApp.getFolderById(folderId);
   var files = folder.getFilesByType(MimeType.PDF);
+
+  // Read existing tags from Announcements sheet
+  var existingTags = {};
+  readTable_('Announcements').forEach(function(a) {
+    existingTags[getField_(a, 'fileId')] = {
+      branchTags: getField_(a, 'branchTags') || '全旅',
+      audienceTags: getField_(a, 'audienceTags') || '',
+      status: getField_(a, 'status') || 'visible',
+      note: getField_(a, 'note') || ''
+    };
+  });
+
   var out = [];
   while (files.hasNext()) {
     var f = files.next();
+    var fid = f.getId();
+    // Auto-register new PDFs in Announcements sheet
+    if (!existingTags[fid]) {
+      appendRowByHeaders_('Announcements', {
+        announcementId: uid_('ann'), fileId: fid,
+        fileName: f.getName(), fileUrl: f.getUrl(),
+        fileSize: Math.round(f.getSize() / 1024) + ' KB',
+        branchTags: '全旅', audienceTags: '', status: 'visible',
+        updatedAt: now_(), note: ''
+      });
+    }
+    var tags = existingTags[fid] || { branchTags: '全旅', audienceTags: '', status: 'visible', note: '' };
     out.push({
-      id: f.getId(), name: f.getName(), url: f.getUrl(),
+      id: fid, name: f.getName(), url: f.getUrl(),
       updatedAt: Utilities.formatDate(f.getLastUpdated(), Session.getScriptTimeZone(), 'yyyy-MM-dd'),
-      size: Math.round(f.getSize() / 1024) + ' KB'
+      size: Math.round(f.getSize() / 1024) + ' KB',
+      branchTags: tags.branchTags ? tags.branchTags.split(',').map(function(s){return s.trim();}).filter(Boolean) : ['全旅'],
+      audienceTags: tags.audienceTags ? tags.audienceTags.split(',').map(function(s){return s.trim();}).filter(Boolean) : [],
+      visible: tags.status !== 'hidden',
+      note: tags.note || ''
     });
   }
-  out.sort(function (a, b) { return b.updatedAt.localeCompare(a.updatedAt); });
+  out.sort(function (a, b) { return (b.updatedAt||'').localeCompare(a.updatedAt||''); });
   return { success: true, files: out };
+}
+
+// Update PDF tags (leader only)
+function handleUpdatePdfTags_(p) {
+  var fileId = p.fileId;
+  var existing = readTable_('Announcements').filter(function(a) { return getField_(a, 'fileId') === fileId; })[0];
+  if (existing) {
+    var annId = getField_(existing, 'announcementId');
+    if (p.branchTags !== undefined) updateCellByName_('Announcements', 'announcementId', annId, 'branchTags', p.branchTags);
+    if (p.audienceTags !== undefined) updateCellByName_('Announcements', 'announcementId', annId, 'audienceTags', p.audienceTags);
+    if (p.status !== undefined) updateCellByName_('Announcements', 'announcementId', annId, 'status', p.status);
+    if (p.note !== undefined) updateCellByName_('Announcements', 'announcementId', annId, 'note', p.note);
+    updateCellByName_('Announcements', 'announcementId', annId, 'updatedAt', now_());
+  } else {
+    appendRowByHeaders_('Announcements', {
+      announcementId: uid_('ann'), fileId: fileId,
+      fileName: p.fileName || '', fileUrl: p.fileUrl || '',
+      branchTags: p.branchTags || '全旅', audienceTags: p.audienceTags || '',
+      status: p.status || 'visible', updatedAt: now_(), note: p.note || ''
+    });
+  }
+  writeAudit_(p.operatedBy || 'system', 'updatePdfTags', 'Announcements', fileId, p.status || '');
+  return { success: true };
 }

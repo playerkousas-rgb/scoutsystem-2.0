@@ -19,7 +19,7 @@ export default function Admin(){
       <a href="/notices"><SummaryCard label="通告" value={stats.notices} desc="圖書館引入通告" tone="gold"/></a>
     </section>
     <section className="grid">
-      <FeatureCard title="支部管理" icon="🏢" text="管理支部及小隊 / 六。" href="/admin/branches"/>
+      <FeatureCard title="支部管理" icon="🏢" text="管理支部及小隊。" href="/admin/branches"/>
       <FeatureCard title="成員資料庫" icon="👥" text="新增、編輯、連結家長。" href="/admin/members"/>
       <FeatureCard title="審核 / 申請管理" icon="✅" text="審核申請，批核後自動建帳號。" href="/admin/applications"/>
       <FeatureCard title="活動管理" icon="🗓️" text="新增、編輯、發布活動。" href="/admin/events"/>

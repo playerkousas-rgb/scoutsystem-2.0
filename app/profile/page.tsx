@@ -88,7 +88,7 @@ export default function Profile(){
       {session.role==='member' && (
         <>
           <label>電話<input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="聯絡電話"/></label>
-          <label>小隊 / 六
+          <label>小隊
             <select value={patrolId} onChange={e=>setPatrolId(e.target.value)}>
               <option value="">不適用 / 未分隊</option>
               {availablePatrols.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
@@ -97,8 +97,8 @@ export default function Profile(){
           <label>隊內身份
             <select value={patrolRole} onChange={e=>setPatrolRole(e.target.value)}>
               <option value="">隊員</option>
-              <option value="leader">隊長 / 六長</option>
-              <option value="deputy">副隊長 / 副六長</option>
+              <option value="leader">隊長長</option>
+              <option value="deputy">副隊長 / 副隊長</option>
             </select>
           </label>
           <p className="muted">出生日期和 YMIS 不可自行修改，如有需要請聯絡領袖。</p>

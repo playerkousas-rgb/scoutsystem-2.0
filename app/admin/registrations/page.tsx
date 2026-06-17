@@ -29,7 +29,7 @@ function RegistrationsInner(){
     {err&&<p className="badge red">{err}</p>}
     <section className="card"><label>選擇活動<select value={eventId} onChange={e=>setEventId(e.target.value)}>{s.events.map(e=><option key={e.id} value={e.id}>{e.title}</option>)}</select></label></section>
     {event&&<><section className="grid">{patrolStats.map(p=><div className="card" key={p.name}><span className="badge blue">{p.name}</span><h2>✅{p.yes} ❤️{p.heart} ⚠️{p.pending}</h2></div>)}</section>
-    <section className="card"><table className="table"><thead><tr><th>姓名</th><th>小隊 / 六</th><th>狀態</th><th>緊急電話</th><th>付款</th><th>操作</th></tr></thead>
+    <section className="card"><table className="table"><thead><tr><th>姓名</th><th>小隊</th><th>狀態</th><th>緊急電話</th><th>付款</th><th>操作</th></tr></thead>
       <tbody>{targets.map(m=>{const r=replyStatus(s,eventId,m.id);const p=s.patrols.find(x=>x.id===m.patrolId);return <tr key={m.id}><td>{m.name}</td><td>{p?.name||'不適用'}</td><td>{r?.type||'未回覆'}</td><td>{m.emergencyContactPhone||'—'}</td><td>{r?.paid?'已付款':'未付款'}</td><td><button className="btn" onClick={()=>togglePaid(m.id)}>切換付款</button></td></tr>})}</tbody></table>
       <button className="btn primary" onClick={csv} style={{marginTop:12}}>匯出 CSV</button></section></>}
   </div>;

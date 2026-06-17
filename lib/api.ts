@@ -155,7 +155,7 @@ export function apiUpdateUserField(userId: string, field: string, value: string)
   return apiMutate('updateUserField', { userId, field, value });
 }
 
-// ==================== 小隊 / 六 ====================
+// ==================== 小隊 ====================
 
 export function apiCreatePatrol(p: { branchId: string; name: string; short?: string }) {
   return apiMutate('createPatrol', p as any);
@@ -199,4 +199,7 @@ export function apiSaveConfig(key: string, value: string) {
 
 export async function apiListAnnouncementPdfs() {
   return apiGet('listAnnouncementPdfs');
+}
+export function apiUpdatePdfTags(p: { fileId: string; branchTags?: string; audienceTags?: string; status?: string; note?: string }) {
+  return apiMutate('updatePdfTags', p);
 }

@@ -4,7 +4,7 @@ import { AppState, loadState } from '@/lib/store';
 import { apiCreateMember, apiLinkParent, apiUpdateMember, apiDeleteMember } from '@/lib/api';
 import { branches } from '@/lib/model';
 
-function roleLabel(r?:string){return r==='leader'?'隊長 / 六長':r==='deputy'?'副隊長 / 副六長':r==='member'?'隊員 / 六員':'—'}
+function roleLabel(r?:string){return r==='leader'?'隊長長':r==='deputy'?'副隊長 / 副隊長':r==='member'?'隊員員':'—'}
 function branchName(id?:string){return branches.find(b=>b.id===id)?.short||id||'—'}
 
 export default function Page(){
@@ -98,7 +98,7 @@ export default function Page(){
 
     <section className="card">
       <table className="table">
-        <thead><tr><th>姓名</th><th>YMIS</th><th>支部</th><th>小隊 / 六</th><th>隊內身份</th><th>年齡</th><th>家長連結</th><th>操作</th></tr></thead>
+        <thead><tr><th>姓名</th><th>YMIS</th><th>支部</th><th>小隊</th><th>隊內身份</th><th>年齡</th><th>家長連結</th><th>操作</th></tr></thead>
         <tbody>{s.members.map(c=>{
           const isEdit=editing===c.id;
           if(isEdit)return (

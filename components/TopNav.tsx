@@ -18,7 +18,7 @@ export default function TopNav(){
     <Link className="brand" href="/">ScoutSystem</Link>
     <nav className="nav">
       {/* 已登入帳號 */}
-      {session && <><Link className="btn" href="/calendar">行事曆</Link><Link className="btn" href="/activities">活動</Link><Link className="btn" href="/library">圖書館</Link></>}
+      {session && <><Link className="btn" href="/calendar">行事曆</Link><Link className="btn" href="/activities">活動</Link><Link className="btn" href="/notices">公告</Link><Link className="btn" href="/library">圖書館</Link></>}
       {/* 已選旅團但未登入帳號 → 可看公開行事曆和活動 */}
       {!session && hasTroop && <><Link className="btn optional" href="/calendar">行事曆</Link><Link className="btn optional" href="/activities">活動</Link></>}
       {/* 未選旅團 */}
