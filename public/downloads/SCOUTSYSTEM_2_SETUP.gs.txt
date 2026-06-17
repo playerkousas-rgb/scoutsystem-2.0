@@ -143,7 +143,7 @@ function getInitialSheets_() {
     ],
     Users: [
       ['userId', 'name', 'email', 'password', 'role', 'branchId', 'memberId', 'approved', 'createdAt', 'note'],
-      ['u_admin', '管理員（待設定）', '', 'changeme', 'admin', '', '', true, now_(), 'placeholder。填好 ADMIN_EMAIL 後到選單 → 重新建立管理員帳號。']
+      ['u_admin', '超管（待設定）', '', 'changeme', 'troop_super', '', '', true, now_(), 'placeholder。填好 ADMIN_EMAIL 後到選單 → 重新建立管理員帳號。']
     ],
     Applications: [
       ['applicationId', 'type', 'name', 'email', 'role', 'branchId', 'ymNumbers', 'status', 'createdAt', 'decidedAt', 'note']
@@ -160,7 +160,7 @@ function getInitialSheets_() {
       ['replyId', 'eventId', 'memberId', 'parentUserId', 'type', 'operatedBy', 'updatedAt', 'paid', 'notes']
     ],
     LibraryBookmarks: [
-      ['bookmarkId', 'title', 'source', 'officialDeadline', 'internalDeadline', 'mode', 'branchTags', 'status', 'convertedEventId', 'createdBy', 'createdAt', 'note']
+      ['bookmarkId', 'title', 'source', 'officialDeadline', 'internalDeadline', 'mode', 'activityType', 'eligibility', 'fee', 'branchTags', 'status', 'convertedEventId', 'createdBy', 'createdAt', 'note']
     ],
     Announcements: [
       ['announcementId', 'title', 'source', 'month', 'publishDate', 'branchTags', 'folderUrl', 'documentUrl', 'createdAt', 'status', 'note']
@@ -194,9 +194,9 @@ function seedInitialAdmin_(ss) {
     sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).clearContent();
   }
   if (adminEmail) {
-    sh.appendRow(['u_admin', '旅團管理員', adminEmail, adminPw, 'admin', '', '', true, now_(), '由 ADMIN_EMAIL 建立，預設密碼 ' + adminPw + '。']);
+    sh.appendRow(['u_admin', '超管', adminEmail, adminPw, 'troop_super', '', '', true, now_(), '由 ADMIN_EMAIL 建立，預設密碼 ' + adminPw + '。']);
   } else {
-    sh.appendRow(['u_admin', '旅團管理員', '', adminPw, 'admin', '', '', true, now_(), '請填 ADMIN_EMAIL 後再回來更新此 email。']);
+    sh.appendRow(['u_admin', '超管', '', adminPw, 'troop_super', '', '', true, now_(), '請填 ADMIN_EMAIL 後再回來更新此 email。']);
   }
 }
 
@@ -591,7 +591,10 @@ function mapBookmarks_() {
       branchTags: parseArray_(getField_(b, 'branchTags')),
       status: getField_(b, 'status') || 'published',
       convertedEventId: getField_(b, 'convertedEventId') || '',
-      fee: getField_(b, 'fee') || ''
+      fee: getField_(b, 'fee') || '',
+      eligibility: getField_(b, 'eligibility') || '',
+      activityType: getField_(b, 'activityType') || '',
+      importedBy: getField_(b, 'createdBy') || ''
     };
   });
 }
@@ -653,13 +656,26 @@ function buildDashboard(userId) {
   var techAccounts = getConfigValue_('TECH_TEST_ACCOUNTS').split(',').map(function (s) { return s.trim(); });
   var isTechTest = techAccounts.indexOf(userId) >= 0;
 
-  // 找使用者
+  // 找使用者（先 Users，找不到再查 Members —— 成員可能只有 Members 沒有 Users）
   var allUsers = mapUsers_();
   var user = null;
   if (isTechTest) {
     user = { id: userId, name: userId + '（技術測試）', role: 'super_admin', branchId: '', memberId: '', approved: true, techTest: true };
   } else {
     user = allUsers.filter(function (u) { return u.id === userId; })[0] || null;
+  }
+
+  // ★ 如果 Users 表找不到，檢查是否是 Members 表的成員（直接後台建立的成員沒有 Users 記錄）
+  if (!user && !isTechTest) {
+    var allMembersForCheck = mapMembers_();
+    var memberUser = allMembersForCheck.filter(function (m) { return m.id === userId; })[0];
+    if (memberUser) {
+      user = {
+        id: memberUser.id, name: memberUser.name, role: 'member',
+        branchId: memberUser.branchId || '', memberId: memberUser.id,
+        childMemberIds: [], approved: true, techTest: false
+      };
+    }
   }
 
   var role = user ? user.role : '';
@@ -693,7 +709,7 @@ function buildDashboard(userId) {
   // 當前使用者永遠包含
   state.users = [user];
 
-  if (role === 'admin' || role === 'super_admin') {
+  if (role === 'admin' || role === 'super_admin' || role === 'troop_super') {
     // 管理員：全部
     state.patrols = allPatrols;
     state.users = allUsers;
@@ -830,6 +846,7 @@ function doGet(e) {
       case 'decideApplication': return wrap_(handleDecideApplication_(p), p);
       case 'toggleUser': return wrap_(handleToggleUser_(p), p);
       case 'updateUserRole': return wrap_(handleUpdateUserRole_(p), p);
+      case 'updateUserField': return wrap_(handleUpdateUserField_(p), p);
       case 'deleteUser': return wrap_(handleDeleteUser_(p), p);
       case 'createUser': return wrap_(handleCreateUser_(p), p);
       case 'createPatrol': return wrap_(handleCreatePatrol_(p), p);
@@ -936,7 +953,7 @@ function handleLogin_(p) {
     if (mu) memberAge = calcAge_(getField_(mu, 'dateOfBirth'));
   }
   var dash = role === 'parent' ? '/parent' : (role === 'member' ? '/member' :
-    (role === 'admin' || role === 'super_admin' ? '/admin' : '/leader'));
+    (role === 'admin' || role === 'super_admin' || role === 'troop_super' ? '/admin' : '/leader'));
   return json({ success: true, user: {
     userId: getField_(user, 'userId'), name: getField_(user, 'name'), role: role,
     branchId: getField_(user, 'branchId') || '', memberId: memberId || '', age: memberAge,
@@ -952,7 +969,7 @@ function filterApplications_(userId) {
   var user = users.filter(function (u) { return getField_(u, 'userId') === userId; })[0];
   if (!user) return [];
   var role = String(getField_(user, 'role')).toLowerCase();
-  if (role === 'admin' || role === 'super_admin') return allApps;
+  if (role === 'admin' || role === 'super_admin' || role === 'troop_super') return allApps;
   var branchId = getField_(user, 'branchId') || '';
   return allApps.filter(function (a) { return a.branchId === branchId; });
 }
@@ -1038,8 +1055,14 @@ function handleDecideApplication_(p) {
       var ymNumbers = getField_(app, 'ymNumbers');
       var userId = uid_('u');
 
+      // 從 note 提取密碼
+      var appNote = String(getField_(app, 'note') || '');
+      var userPw = 'changeme';
+      var pwMatch = appNote.match(/pw:([^;]+)/);
+      if (pwMatch) userPw = pwMatch[1].trim();
+
       appendRowByHeaders_('Users', {
-        userId: userId, name: name, email: email, password: 'changeme',
+        userId: userId, name: name, email: email, password: userPw,
         role: role, branchId: branchId, memberId: '', approved: true,
         createdAt: now_(), note: '由 ' + (p.operatedBy || 'system') + ' 批核'
       });
@@ -1059,18 +1082,32 @@ function handleDecideApplication_(p) {
       if (role === 'member') {
         var memberYm = String(ymNumbers || '').trim();
         if (memberYm) {
+          // 從 note 提取 email 和 dob
+          var appNote = String(getField_(app, 'note') || '');
+          var memberEmail2 = '';
+          var memberDob2 = '';
+          var emailMatch = appNote.match(/email:([^;]+)/);
+          if (emailMatch) memberEmail2 = emailMatch[1].trim();
+          var dobMatch = appNote.match(/dob:([^;]+)/);
+          if (dobMatch) memberDob2 = dobMatch[1].trim();
+          // 電話 = note 第一個不是 email/dob 的部分
+          var phoneMatch = appNote.split(';').filter(function(p){return p && !p.match(/^(email|dob):/);})[0];
+          var memberPhone = phoneMatch ? phoneMatch.trim() : '';
+
           var allMembers2 = readTable_('Members');
           var existingMember = allMembers2.filter(function (m) { return String(getField_(m, 'ymNumber')).trim() === memberYm; })[0];
           var memberId2 = '';
           if (existingMember) {
             memberId2 = getField_(existingMember, 'memberId');
+            var existingPw = String(getField_(existingMember, 'password') || '').trim();
+            if (!existingPw) updateCellByName_('Members', 'memberId', memberId2, 'password', 'changeme');
           } else {
             memberId2 = uid_('m');
             appendRowByHeaders_('Members', {
-              memberId: memberId2, ymNumber: memberYm, name: name,
+              memberId: memberId2, ymNumber: memberYm, password: userPw, name: name,
               branchId: branchId, patrolId: '', patrolRole: '',
-              dateOfBirth: '', parentUserId: '',
-              emergencyContactName: '', emergencyContactPhone: '',
+              dateOfBirth: memberDob2 || '', parentUserId: '',
+              emergencyContactName: '', emergencyContactPhone: memberPhone || '',
               active: true, note: '由申請 ' + appId + ' 批核建立'
             });
           }
@@ -1292,6 +1329,12 @@ function handleUpdateUserRole_(p) {
   return { success: true };
 }
 
+function handleUpdateUserField_(p) {
+  updateCellByName_('Users', 'userId', p.userId, p.field, p.value || '');
+  writeAudit_(p.operatedBy || 'system', 'updateUserField', 'Users', p.userId, p.field + '=' + (p.value || ''));
+  return { success: true };
+}
+
 function handleDeleteUser_(p) {
   var idx = findRowIndexById_('Users', 'userId', p.userId);
   if (idx < 0) return { success: false, error: '找不到使用者' };
@@ -1355,11 +1398,12 @@ function handleImportBookmark_(p) {
   appendRowByHeaders_('LibraryBookmarks', {
     bookmarkId: id, title: p.title || '', source: p.source || 'Scout Circulars',
     officialDeadline: p.officialDeadline || '', internalDeadline: p.internalDeadline || '',
-    mode: mode, branchTags: p.branchTags || '全旅', status: status,
+    mode: mode, activityType: p.activityType || '', eligibility: p.eligibility || '',
+    fee: p.fee || '', branchTags: p.branchTags || '全旅', status: status,
     convertedEventId: convertedEventId, createdBy: p.operatedBy || '',
     createdAt: now_(), note: p.note || ''
   });
-  writeAudit_(p.operatedBy || 'system', 'importBookmark', 'LibraryBookmarks', id, (p.title || '') + ' → ' + mode);
+  writeAudit_(p.operatedBy || 'system', 'importBookmark', 'LibraryBookmarks', id, (p.title || '') + ' → ' + mode + ' (by ' + (p.operatedBy || 'system') + ')');
   return { success: true };
 }
 

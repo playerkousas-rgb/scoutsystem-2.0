@@ -1,10 +1,11 @@
-export type Role = 'super_admin' | 'admin' | 'group_leader' | 'branch_leader' | 'coach' | 'parent' | 'member' | 'guest';
+export type Role = 'super_admin' | 'troop_super' | 'admin' | 'group_leader' | 'branch_leader' | 'coach' | 'parent' | 'member' | 'guest';
 export type EventKind = 'activity' | 'notice_info' | 'notice_troop_participation';
 export type ReplyType = 'interested' | 'registered' | 'declined' | 'unresponded';
 export type PluginTier = 2 | 3;
 
 export const ROLE_LABEL: Record<Role, string> = {
-  super_admin: '技術測試帳號（權限等同最高）',
+  super_admin: '技術測試帳號',
+  troop_super: '超管（旅團最高權限）',
   admin: '管理員',
   group_leader: '團長',
   branch_leader: '支部領袖',
@@ -14,16 +15,17 @@ export const ROLE_LABEL: Record<Role, string> = {
   guest: '未登入',
 };
 
-export const ROLE_ORDER: Role[] = ['member', 'parent', 'coach', 'branch_leader', 'group_leader', 'admin', 'super_admin'];
-export const MANAGER_ROLES: Role[] = ['super_admin', 'admin'];
+export const ROLE_ORDER: Role[] = ['member', 'parent', 'coach', 'branch_leader', 'group_leader', 'admin', 'troop_super', 'super_admin'];
+export const MANAGER_ROLES: Role[] = ['super_admin', 'troop_super', 'admin'];
 export const LEADER_ROLES: Role[] = ['group_leader', 'branch_leader', 'coach'];
-export const CAN_MARK_LIBRARY: Role[] = ['super_admin', 'admin', 'group_leader', 'branch_leader', 'coach'];
+export const CAN_MARK_LIBRARY: Role[] = ['super_admin', 'troop_super', 'admin', 'group_leader', 'branch_leader', 'coach'];
 
-export function isAdmin(role?: Role) { return role === 'super_admin' || role === 'admin'; }
-export function isLeaderOrAbove(role?: Role) { return !!role && ['super_admin','admin','group_leader','branch_leader','coach'].includes(role); }
+export function isAdmin(role?: Role) { return role === 'super_admin' || role === 'troop_super' || role === 'admin'; }
+export function isLeaderOrAbove(role?: Role) { return !!role && ['super_admin','troop_super','admin','group_leader','branch_leader','coach'].includes(role); }
 export function canSeeRole(viewer: Role, target: Role) {
   if (viewer === 'super_admin') return true;
-  if (viewer === 'admin') return target !== 'super_admin';
+  if (viewer === 'troop_super') return target !== 'super_admin';
+  if (viewer === 'admin') return !['super_admin','troop_super'].includes(target);
   if (viewer === 'group_leader') return ['branch_leader','coach','parent','member'].includes(target);
   if (viewer === 'branch_leader') return ['parent','member'].includes(target);
   if (viewer === 'coach') return target === 'member';
@@ -42,7 +44,6 @@ export const branches = [
   { id: 'b5', name: '樂行童軍支部', short: '樂行' },
 ];
 
-// Patrols 預設值——只作前端參考；真正資料來自 GS Patrols 表
 export const patrols = [
   { id: 'p1', branchId: 'b2', name: 'RED', short: 'R', leaderMemberId: '', deputyLeaderMemberId: '', memberIds: [] as string[] },
   { id: 'p2', branchId: 'b2', name: 'YELLOW', short: 'Y', leaderMemberId: '', deputyLeaderMemberId: '', memberIds: [] as string[] },

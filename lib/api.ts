@@ -151,6 +151,9 @@ export function apiUpdateUserRole(userId: string, role: string) {
 export function apiDeleteUser(userId: string) {
   return apiMutate('deleteUser', { userId });
 }
+export function apiUpdateUserField(userId: string, field: string, value: string) {
+  return apiMutate('updateUserField', { userId, field, value });
+}
 
 // ==================== 小隊 / 六 ====================
 
@@ -163,7 +166,7 @@ export function apiTogglePatrol(patrolId: string) {
 
 // ==================== 圖書館標記 ====================
 
-export function apiImportBookmark(p: { title: string; mode: string; source?: string; officialDeadline?: string; internalDeadline?: string; branchTags?: string; fee?: string; date?: string }) {
+export function apiImportBookmark(p: { title: string; mode: string; source?: string; officialDeadline?: string; internalDeadline?: string; branchTags?: string; fee?: string; eligibility?: string; activityType?: string; date?: string }) {
   return apiMutate('importBookmark', p as any);
 }
 

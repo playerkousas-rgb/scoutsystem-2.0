@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { AppState, loadState } from '@/lib/store';
 import { apiToggleUser, apiCreateUser, apiUpdateUserRole, apiDeleteUser } from '@/lib/api';
-import { ROLE_LABEL, branches, MANAGER_ROLES, LEADER_ROLES } from '@/lib/model';
+import { ROLE_LABEL, branches, LEADER_ROLES } from '@/lib/model';
 import type { Role } from '@/lib/model';
 
 export default function Page(){
@@ -29,6 +29,9 @@ export default function Page(){
 
   if(!s)return <div className="card">{err||'載入中...'}</div>;
 
+  // super_admin(技術測試) 和 troop_super(超管) 不能從前端改角色
+  function isLocked(u:any){return u.techTest || u.role==='troop_super';}
+
   const filtered=s.users.filter(u=>{
     if(filterRole!=='all'&&u.role!==filterRole)return false;
     if(filterBranch!=='all'&&u.branchId!==filterBranch)return false;
@@ -48,6 +51,7 @@ export default function Page(){
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="搜尋姓名或 Email"/>
         <select value={filterRole} onChange={e=>setFilterRole(e.target.value)}>
           <option value="all">全部角色</option>
+          <option value="troop_super">超管</option>
           <option value="admin">管理員</option>
           <option value="group_leader">團長</option>
           <option value="branch_leader">支部領袖</option>
@@ -73,7 +77,13 @@ export default function Page(){
         <input value={name} onChange={e=>setName(e.target.value)} placeholder="姓名 *"/>
         <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email *"/>
         <input value={pw} onChange={e=>setPw(e.target.value)} placeholder="密碼"/>
-        <select value={role} onChange={e=>setRole(e.target.value as Role)}>{[...MANAGER_ROLES,...LEADER_ROLES,'parent'].map(r=><option key={r} value={r}>{ROLE_LABEL[r as Role]}</option>)}</select>
+        <select value={role} onChange={e=>setRole(e.target.value as Role)}>
+          <option value="admin">管理員</option>
+          <option value="group_leader">團長</option>
+          <option value="branch_leader">支部領袖</option>
+          <option value="coach">教練員</option>
+          <option value="parent">家長</option>
+        </select>
         {(LEADER_ROLES.includes(role))&&<select value={branchId} onChange={e=>setBranchId(e.target.value)}><option value="">選擇支部</option>{branches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select>}
       </div>
       <button className="btn primary" disabled={loading} onClick={add}>{loading?'建立中...':'建立'}</button>
@@ -82,17 +92,21 @@ export default function Page(){
     <section className="card"><table className="table">
       <thead><tr><th>姓名</th><th>Email</th><th>角色</th><th>支部</th><th>狀態</th><th>操作</th></tr></thead>
       <tbody>{filtered.map(u=><tr key={u.id}>
-        <td>{u.name}{u.techTest&&<span className="badge blue" style={{marginLeft:4}}>技術</span>}</td>
+        <td>{u.name}{u.techTest&&<span className="badge blue" style={{marginLeft:4}}>技術</span>}{u.role==='troop_super'&&<span className="badge gold" style={{marginLeft:4}}>超管</span>}</td>
         <td>{u.email||'—'}</td>
         <td>
-          <select value={u.role} onChange={e=>changeRole(u.id,e.target.value as Role)} style={{fontSize:'0.9em'}}>
-            <option value="admin">管理員</option>
-            <option value="group_leader">團長</option>
-            <option value="branch_leader">支部領袖</option>
-            <option value="coach">教練員</option>
-            <option value="parent">家長</option>
-            <option value="member">成員</option>
-          </select>
+          {isLocked(u) ? (
+            <span className="badge blue">{ROLE_LABEL[u.role as Role] || u.role}（僅 Sheet 可改）</span>
+          ) : (
+            <select value={u.role} onChange={e=>changeRole(u.id,e.target.value as Role)} style={{fontSize:'0.9em'}}>
+              <option value="admin">管理員</option>
+              <option value="group_leader">團長</option>
+              <option value="branch_leader">支部領袖</option>
+              <option value="coach">教練員</option>
+              <option value="parent">家長</option>
+              <option value="member">成員</option>
+            </select>
+          )}
         </td>
         <td>{branches.find(b=>b.id===u.branchId)?.short||'-'}</td>
         <td>{u.approved?<span className="badge green">啟用</span>:<span className="badge red">停用</span>}</td>
