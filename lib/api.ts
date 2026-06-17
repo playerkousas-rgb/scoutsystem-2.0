@@ -154,6 +154,15 @@ export function apiDeleteUser(userId: string) {
 export function apiUpdateUserField(userId: string, field: string, value: string) {
   return apiMutate('updateUserField', { userId, field, value });
 }
+export function apiGrantFeature(targetUserId: string, feature: string, granted: boolean) {
+  return apiMutate('grantFeature', { targetUserId, feature, granted: String(granted) });
+}
+export function apiRevokeFeature(targetUserId: string, feature: string) {
+  return apiMutate('revokeFeature', { targetUserId, feature });
+}
+export async function apiGetUserFeatures(targetUserId: string) {
+  return apiGet('getUserFeatures', { targetUserId });
+}
 
 // ==================== 小隊 ====================
 

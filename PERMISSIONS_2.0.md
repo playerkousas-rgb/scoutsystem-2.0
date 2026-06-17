@@ -1,6 +1,6 @@
 # ScoutSystem 2.0 權限與功能對照表
 
-> **最後更新：2026-06-16**
+> **最後更新：2026-06-18**
 > **用途：定義每個角色能做甚麼、每個功能卡片的入口。**
 
 ---
@@ -10,7 +10,7 @@
 由低到高：
 
 ```
-member < parent < coach < branch_leader < group_leader < admin < super_admin
+member < parent < coach < branch_leader < group_leader < admin < troop_super < super_admin
 ```
 
 **規則：下級看到，上級一定看到。** 但反過來不是。
@@ -19,172 +19,91 @@ member < parent < coach < branch_leader < group_leader < admin < super_admin
 
 ## 2. 角色定義
 
-| 角色 | role 值 | 身份說明 | 登入入口 |
-|---|---|---|---|
-| 技術測試帳號 | `super_admin` | 技術管理人員的測試帳號；權限等同最高但**不是**旅團管理層身份。sheep / 0728。 | 直接輸入 sheep / 0728 |
-| 管理員 | `admin` | 由旅團設定；管理所有支部、審核申請、活動管理、系統設定。 | email + password |
-| 團長 | `group_leader` | 管理所屬支部的活動、家長審核、成員資料、圖書館標記。 | email + password |
-| 支部領袖 | `branch_leader` | 管理所屬支部的活動、家長審核、成員資料、圖書館標記。權限低於團長。 | email + password |
-| 教練員 | `coach` | 可標記圖書館、看活動、看報名管理；**無審核權限**。 | email + password |
-| 家長 | `parent` | 管理子女資料、代子女回覆活動。子女可能在不同支部。 | email + password |
-| 成員 | `member` | 查看自己活動。18 歲以下只能 ❤️；18 歲以上可 ✅ / ❌。 | YMIS 10位數字 |
+| 角色 | role 值 | 身份說明 | 登入入口 | 設定方式 |
+|---|---|---|---|---|
+| 技術測試帳號 | `super_admin` | 平台技術管理員專用，跨旅團，權限等同最高。**不顯示在 Sheet。** | GS 硬編碼 | 僅在 GS 代碼 |
+| 超管 | `troop_super` | 旅團最高權限，第一個帳號。可管理所有用戶和設定。 | Email + 密碼 | 僅在 Sheet Users 表 |
+| 管理員 | `admin` | 可申請加入。管理所有支部、審核、活動。不能管理超管。 | Email + 密碼 | 前端申請或後台建立 |
+| 團長 | `group_leader` | 管理所屬支部的活動、家長審核、成員資料、圖書館標記。 | Email + 密碼 | 前端申請或後台建立 |
+| 支部領袖 | `branch_leader` | 管理所屬支部。可改所屬支部教練員/家長的資料。 | Email + 密碼 | 前端申請或後台建立 |
+| 教練員 | `coach` | 可標記圖書館、看活動、看報名管理；**無審核權限**。 | Email + 密碼 | 前端申請或後台建立 |
+| 家長 | `parent` | 管理子女資料、代子女回覆活動。子女可能在不同支部。 | Email + 密碼 | 前端申請或後台建立 |
+| 成員 | `member` | 查看自己活動。18 歲以下只能 ❤️；18 歲以上可 ✅ / ❌。 | YMIS / 成員編號 + 密碼 | 後台建立或前端申請 |
 
 ---
 
-## 3. 功能權限對照表
+## 3. 用戶修改權限（階級制）
 
-### 3.1 控制台
+上級可改下級，同級不能改，下級不能改上級。
 
-| 功能 | super_admin | admin | group_leader | branch_leader | coach | parent | member |
-|---|---|---|---|---|---|---|---|
-| 管理員控制台 `/admin` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 領袖控制台 `/leader` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| 家長控制台 `/parent` | — | — | — | — | — | ✅ | ❌ |
-| 成員控制台 `/member` | — | — | — | — | — | — | ✅ |
+| 操作者 | 可修改的對象 |
+|---|---|
+| `super_admin`（技術測試） | 全部 |
+| `troop_super`（超管） | admin 及以下 |
+| `admin` | 除超管/技術測試外所有用戶 |
+| `group_leader` | 所屬支部的支部領袖、教練員、家長、成員 |
+| `branch_leader` | 所屬支部的教練員、家長、成員（可改資料但不能改角色） |
+| `coach` | 不可改任何人 |
+| `parent` | 只能改子女 |
+| `member` | 只能改自己 |
 
-### 3.2 摘要卡片（控制台頂部，只顯示數量）
+---
+
+## 4. 功能權限對照表
+
+### 4.1 控制台
+
+| 功能 | super_admin | troop_super | admin | group_leader | branch_leader | coach | parent | member |
+|---|---|---|---|---|---|---|---|---|
+| 管理員控制台 `/admin` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| 領袖控制台 `/leader` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| 家長控制台 `/parent` | — | — | — | — | — | — | ✅ | ❌ |
+| 成員控制台 `/member` | — | — | — | — | — | — | — | ✅ |
+
+### 4.2 摘要卡片（可點擊跳轉）
 
 | 摘要 | 顯示給 | 點擊跳轉 |
 |---|---|---|
-| 用戶數 | admin / super_admin | `/admin/users` |
-| 待審批數 | admin / super_admin / group_leader / branch_leader | `/admin/applications` |
-| 活動數 | admin / super_admin / leader | `/admin/events` |
-| 通告數 | admin / super_admin / leader | `/notices` |
+| 用戶數 | super_admin / troop_super / admin | `/admin/users` |
+| 待審批數 | super_admin / troop_super / admin / group_leader / branch_leader | `/admin/applications` |
+| 活動數 | 全部管理角色 | `/admin/events` |
+| 通告數 | 全部管理角色 | `/notices` |
 
-> 摘要卡片只負責顯示數量，不是管理入口。要管理就跳轉到功能卡片。
+### 4.3 功能卡片
 
-### 3.3 功能卡片（管理入口）
+| 功能卡片 | super_admin | troop_super | admin | group_leader | branch_leader | coach |
+|---|---|---|---|---|---|---|
+| 支部管理 | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| 成員資料庫 | ✅ 全部 | ✅ 全部 | ✅ 全部 | ✅ 所屬支部 | ✅ 所屬支部 | ❌ |
+| 審核 / 申請管理 | ✅ | ✅ | ✅ | ✅ 所屬支部 | ✅ 所屬支部 | ❌ |
+| 活動管理 | ✅ | ✅ | ✅ | ✅ 所屬支部 | ✅ 所屬支部 | ✅ 所屬支部 |
+| 報名管理 | ✅ | ✅ | ✅ | ✅ 所屬支部 | ✅ 所屬支部 | ✅ 所屬支部 |
+| 圖書館引入 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 通告管理 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 使用者管理 | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| 系統設定 | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| 審核紀錄 | ✅ 全部 | ✅ 全部 | ✅ 全部 | ✅ 自己的 | ❌ | ❌ |
+| 元件市場 / 轉駁中心 | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| 旅團設定 | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| 行事曆管理 | ✅ | ✅ | ✅ | ✅ 所屬支部 | ✅ 所屬支部 | ❌ |
+| 個人資料 `/profile` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-| 功能卡片 | super_admin | admin | group_leader | branch_leader | coach | parent | member |
-|---|---|---|---|---|---|---|---|
-| 支部管理 | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 成員資料庫 | ✅ 全部 | ✅ 全部 | ✅ 所屬支部 | ✅ 所屬支部 | ❌ | ❌ | ❌ |
-| 家長審核 / 申請管理 | ✅ | ✅ | ✅ 所屬支部 | ✅ 所屬支部 | ❌ | ❌ | ❌ |
-| 活動管理 | ✅ | ✅ | ✅ 所屬支部 | ✅ 所屬支部 | ✅ 所屬支部 | ❌ | ❌ |
-| 報名管理 | ✅ | ✅ | ✅ 所屬支部 | ✅ 所屬支部 | ✅ 所屬支部 | ❌ | ❌ |
-| 圖書館標記 | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| 通告管理 | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| 使用者管理 | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 系統設定 | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 審核紀錄 | ✅ | ✅ | ✅ 自己的 | ❌ | ❌ | ❌ | ❌ |
-| 元件市場 / 轉駁中心 | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 旅團設定 | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 行事曆管理 | ✅ | ✅ | ✅ 所屬支部 | ✅ 所屬支部 | ❌ | ❌ | ❌ |
+### 4.4 通告管理 `/notices`
 
-### 3.4 建立管理員
-
-只有 super_admin（技術測試帳號）能建立管理員。admin 不能建立管理員。
+| 操作 | 領袖以上 | parent | member |
+|---|---|---|---|
+| 上傳 Word 通告 | ✅ | ❌ | ❌ |
+| 引入圖書館通告 | ✅ | ❌ | ❌ |
+| 編輯通告標籤 | ✅ | ❌ | ❌ |
+| 隱藏/刪除通告 | ✅（軟刪除） | ❌ | ❌ |
+| 查看通告 | ✅ | ✅ | ✅ |
+| 查看 PDF 公告 | ✅ | ✅ | ✅ |
+| PDF 加標籤/隱藏 | ✅ | ❌ | ❌ |
+| Drive 資料夾設定 | ✅ | ❌ | ❌ |
 
 ---
 
-## 4. 各功能詳細權限
-
-### 4.1 成員資料庫 `/admin/members`
-
-| 操作 | admin | group_leader | branch_leader |
-|---|---|---|---|
-| 查看全部成員 | ✅ | ❌ 只看自己支部 | ❌ 只看自己支部 |
-| 新增成員 | ✅ | ✅ | ✅ |
-| 編輯成員 | ✅ | ✅ | ✅ |
-| 刪除成員 | ✅ | ✅ | ✅ |
-| 連結家長 | ✅ | ✅ | ✅ |
-
-### 4.2 活動管理 `/admin/events`
-
-| 操作 | admin | group_leader | branch_leader | coach |
-|---|---|---|---|---|
-| 新增活動（全旅） | ✅ | ❌ | ❌ | ❌ |
-| 新增活動（支部） | ✅ | ✅ | ✅ | ✅ |
-| 編輯活動 | ✅ | ✅ 所屬 | ✅ 所屬 | ✅ 所屬 |
-| 刪除活動 | ✅ | ✅ 所屬 | ✅ 所屬 | ❌ |
-| 發布活動 | ✅ | ✅ 所屬 | ✅ 所屬 | ✅ 所屬 |
-
-### 4.3 報名管理 `/admin/registrations`
-
-| 操作 | admin | leader | coach |
-|---|---|---|---|
-| 查看報名狀態 | ✅ 全部 | ✅ 所屬支部 | ✅ 所屬支部 |
-| 標記付款 | ✅ | ✅ | ✅ |
-| 匯出 CSV | ✅ | ✅ | ✅ |
-| 刪除報名 | ✅ | ✅ | ❌ |
-| 按小隊統計 | ✅ | ✅ | ✅ |
-
-### 4.4 家長審核 `/admin/applications`
-
-| 操作 | admin | group_leader | branch_leader | coach |
-|---|---|---|---|---|
-| 查看待審批 | ✅ 全部 | ✅ 所屬支部 | ✅ 所屬支部 | ❌ |
-| 批核 | ✅ | ✅ | ✅ | ❌ |
-| 拒絕 | ✅ | ✅ | ✅ | ❌ |
-| 批核後建 User | ✅ 自動 | ✅ 自動 | ✅ 自動 | ❌ |
-| 批核家長後綁子女 | ✅ 自動 | ✅ 自動 | ✅ 自動 | ❌ |
-
-### 4.5 圖書館標記 `/library/import`
-
-| 操作 | admin | leader | coach | parent | member |
-|---|---|---|---|---|---|
-| 引入通告 | ✅ | ✅ | ✅ | ❌ | ❌ |
-| 選擇資訊性模式 | ✅ | ✅ | ✅ | ❌ | ❌ |
-| 選擇旅團參與模式 | ✅ | ✅ | ✅ | ❌ | ❌ |
-
-### 4.6 通告管理 `/notices`
-
-| 操作 | admin | leader | coach | parent | member |
-|---|---|---|---|---|---|
-| 上傳 Word 通告 | ✅ | ✅ | ✅ | ❌ | ❌ |
-| 查看 PDF 公告 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 設定 Drive 資料夾 | ✅ | ❌ | ❌ | ❌ | ❌ |
-
-### 4.7 行事曆 `/calendar`
-
-| 操作 | admin | leader | coach | parent | member |
-|---|---|---|---|---|---|
-| 月曆 / 清單切換 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 查看活動 | ✅ 全部 | ✅ 所屬支部 | ✅ 所屬支部 | ✅ 子女相關 | ✅ 自己相關 |
-| 查看報名統計 | ✅ | ✅ | ✅ | ❌ | ❌ |
-| 子女切換 | ❌ | ❌ | ❌ | ✅ | ❌ |
-| 標記不用集會 | ✅ | ✅ | ❌ | ❌ | ❌ |
-| 恢復集會 | ✅ | ✅ | ❌ | ❌ | ❌ |
-| 跳轉報名管理 | ✅ | ✅ | ✅ | ❌ | ❌ |
-
-### 4.8 集會規則 `/admin/calendar`
-
-| 操作 | admin | group_leader | branch_leader | coach |
-|---|---|---|---|---|
-| 新增集會規則 | ✅ | ✅ | ✅ | ❌ |
-| 啟用/停用 | ✅ | ✅ | ✅ | ❌ |
-
-### 4.9 使用者管理 `/admin/users`
-
-| 操作 | admin | 其他 |
-|---|---|---|
-| 查看使用者 | ✅ 全部 | ❌ |
-| 新增使用者 | ✅ | ❌ |
-| 啟用/停用 | ✅ | ❌ |
-| 修改角色 | ✅ | ❌ |
-| 修改密碼 | ✅ | ❌ |
-
-### 4.10 系統設定 `/admin/settings`
-
-| 操作 | admin | 其他 |
-|---|---|---|
-| 修改 SystemConfig | ✅ | ❌ |
-| 修改 TROOP_CODE / TROOP_NAME | ✅ | ❌ |
-| 修改 REGISTRY_URL | ✅ | ❌ |
-
-> 只有 super_admin（技術測試帳號）。admin 也不能。
-
-### 4.11 小隊 / 六 `/admin/branches`
-
-| 操作 | admin | group_leader | branch_leader | coach |
-|---|---|---|---|---|
-| 新增小隊 | ✅ | ✅ | ✅ | ❌ |
-| 停用小隊 | ✅ | ✅ | ✅ | ❌ |
-| 查看小隊成員 | ✅ | ✅ 所屬支部 | ✅ 所屬支部 | ✅ 所屬支部 |
-
----
-
-## 5. 個人化行事曆權限
+## 5. 個人化行事曆
 
 ### 5.1 各角色看到的活動範圍
 
@@ -212,102 +131,97 @@ member < parent < coach < branch_leader < group_leader < admin < super_admin
 
 ---
 
-## 6. 頂欄導覽
+## 6. 行事曆管理
 
-### 6.1 未登入
+### 6.1 恆常集會
 
-```
-ScoutSystem | 接入 | 下載 | 更新 | 使用旅團 | [申請帳戶(如有旅團)] | 登入
-```
+| 操作 | admin / troop_super | group_leader | branch_leader | coach |
+|---|---|---|---|---|
+| 新增規則 | ✅ | ✅ | ✅ | ❌ |
+| 啟用/停用 | ✅ | ✅ | ✅ | ❌ |
 
-### 6.2 已登入（一般角色）
+### 6.2 特別集會 / 單次活動
 
-```
-ScoutSystem | 行事曆 | 活動 | 圖書館 | 控制台 | [旅團名 · 姓名] | 登出
-```
+| 操作 | admin / troop_super | group_leader | branch_leader | coach |
+|---|---|---|---|---|
+| 新增特別集會 | ✅ | ✅ | ✅ | ✅ |
+| 跨支部活動 | ✅ | ✅ | ❌ | ❌ |
 
-### 6.3 已登入（管理員以上）
-
-```
-ScoutSystem | 行事曆 | 活動 | 圖書館 | 更新 | 元件市場 | 轉駁中心 | 控制台 | [旅團名 · 姓名] | 登出
-```
+> 特別集會 = 單次活動，直接加入行事曆。適合深資/樂行的不定期活動。選多個支部 = 跨支部活動（全旅可見）。
 
 ---
 
-## 7. 轉駁器 / 插件可見性
+## 7. 公告 PDF 標籤
 
-### 7.1 元件市場 `/marketplace`
-
-只有 admin / super_admin 能看到元件市場入口。
-
-### 7.2 插件最低可見角色
-
-每個插件可以設定「最低可見角色」。
-
-```
-如果設為 member → 成員、家長、教練員、支部領袖、團長、管理員 都看到
-如果設為 branch_leader → 支部領袖、團長、管理員 看到
-如果設為 admin → 只有管理員 看到
-```
-
-規則：**下級看到，上級一定看到。**
-
-### 7.3 插件分級
-
-| 級別 | 誰部署 | URL 來源 | 需要旅團後台 |
+| 操作 | 領袖以上 | parent | member |
 |---|---|---|---|
-| 第 2 級 | 平台管理員（1份共用） | plugins.url | ❌ |
-| 第 3 級 | 各旅團自部署 | units.endpoints | ✅ |
+| 查看 PDF | ✅（按支部標籤過濾） | ✅（按子女支部過濾） | ✅（按自己支部過濾） |
+| 加支部標籤 | ✅ | ❌ | ❌ |
+| 加對象標籤 | ✅ | ❌ | ❌ |
+| 隱藏/顯示 PDF | ✅ | ❌ | ❌ |
 
 ---
 
 ## 8. 申請帳號流程
 
 ```
-1. 用戶到首頁填入旅團的 Apps Script URL → 選擇旅團
+1. 用戶到首頁選擇旅團
 2. 到 /apply 申請
-   - 家長：填姓名、email、子女 YMIS
-   - 領袖 / 教練員：填姓名、email、支部、經驗
-   - 成員：填姓名、YMIS
+   - 家長：姓名、email、密碼、子女 YMIS（可留空）
+   - 領袖：姓名、email、密碼、支部、身份（團長/支部領袖/教練員）
+   - 成員：姓名、YMIS、密碼、出生日期
+   - 管理員：姓名、email、密碼
 3. 申請寫入 Applications Sheet（status = pending）
-4. 管理員 / 領袖在 /admin/applications 審批
+4. 超管/管理員/團長/支部領袖在 /admin/applications 審批
 5. 批核後：
-   - 自動建立 User（密碼 changeme）
-   - 家長：自動用 YMIS 綁定子女
-   - 成員：自動建立 / 關聯 Member 記錄
+   - 自動建立 User（用申請時的密碼）
+   - 家長：自動用 YMIS 綁定子女（如有填）
+   - 成員：自動建立/關聯 Member 記錄（含密碼、出生日期）
 6. 用戶用帳號登入
 ```
 
 ---
 
-## 9. 審核紀錄 (AuditLogs)
+## 9. 成員年齡規則
 
-所有寫入操作都會記錄：
+```
+18 歲以下：
+  只能 ❤️ 有興趣
+  registered / declined 必須由家長操作
+  GS 端有 guard
 
-| 欄位 | 說明 |
-|---|---|
-| logId | 唯一 ID |
-| userId | 操作者 |
-| action | 動作名稱 |
-| entity | 操作的表 |
-| entityId | 操作的記錄 ID |
-| createdAt | 時間 |
-| detail | 詳細說明 |
+18 歲以上：
+  可自行 ❤️ / ✅ / ❌
+```
 
-### 記錄的操作
+年齡由 `Members.dateOfBirth` 計算。
 
-- createMember / updateMember / deleteMember / linkParent
-- createEvent / updateEvent / publishEvent / deleteEvent
-- setReply / cancelReply / togglePaid
-- decideApplication（approve / reject）
-- toggleUser / createUser
-- createPatrol / togglePatrol
-- importBookmark / updateBookmark / deleteBookmark
-- toggleRegularMeeting / createRegularMeeting
-- toggleMeetingCancel / uncancelMeeting
-- saveConfig
-- toggleSystemLock
-- autoRepairParentLinks
-- applyJoin
+---
 
-只有 admin 能看全部紀錄。group_leader 只能看自己的。
+## 10. 審核紀錄 (AuditLogs)
+
+所有寫入操作都會記錄操作者 userId。
+
+只有 admin 以上能看全部紀錄。group_leader 只能看自己的。
+
+---
+
+## 11. 頂欄導覽
+
+### 未登入（已選旅團）
+
+```
+ScoutSystem | 行事曆 | 活動 | 申請帳戶 | 使用旅團 | 登入
+```
+
+### 已登入（一般角色）
+
+```
+ScoutSystem | 行事曆 | 活動 | 公告 | 圖書館 | 控制台 | 👤姓名 | 登出
+```
+
+### 已登入（管理員以上）
+
+```
+ScoutSystem | 行事曆 | 活動 | 公告 | 圖書館 | 更新 | 元件市場 | 轉駁中心 | 控制台 | 👤姓名 | 登出
+```

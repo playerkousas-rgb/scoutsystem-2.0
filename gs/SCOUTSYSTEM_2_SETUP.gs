@@ -34,7 +34,7 @@ var VISIBLE_SHEETS_FOR_BEGINNERS = [
 var ADVANCED_SHEETS = [
   'Roles', 'FieldSettings', 'Users', 'Applications',
   'Events', 'EventReplies', 'LibraryBookmarks', 'Announcements',
-  'RegularMeetings', 'CancelledMeetings', 'Notices', 'Plugins', 'AuditLogs'
+  'RegularMeetings', 'CancelledMeetings', 'Notices', 'Plugins', 'UserPermissions', 'AuditLogs'
 ];
 
 // ==================== 初始化 ====================
@@ -107,7 +107,7 @@ function getInitialSheets_() {
     ],
     Roles: [
       ['role', 'label', 'level', 'defaultLanding', 'note'],
-      ['super_admin', '技術測試帳號（權限等同最高）', 100, '/admin', 'Sheep / 0728 類測試帳號。'],
+      ['super_admin', '技術測試', 100, '/admin', ''],
       ['admin', '管理員', 90, '/admin', '管理所有支部。'],
       ['group_leader', '團長', 70, '/leader', '管理所屬支部。'],
       ['branch_leader', '支部領袖', 60, '/leader', '管理所屬支部。'],
@@ -177,6 +177,9 @@ function getInitialSheets_() {
     Notices: [
       ['noticeId', 'title', 'mode', 'branchTags', 'publishedAt', 'createdBy', 'status', 'note']
     ],
+    UserPermissions: [
+      ['userId', 'feature', 'granted', 'grantedBy', 'grantedAt', 'note']
+    ],
     Plugins: [
       ['cardId', 'title', 'icon', 'tier', 'url', 'embed', 'minRole', 'enabled', 'order', 'note']
     ],
@@ -228,8 +231,6 @@ function setupReadmeSheet_(ss) {
     ['登入方式', ''],
     ['領袖 / 家長 / 管理員', '用 Email + 密碼。'],
     ['成員', '用 YMIS 10位數字 + 密碼（Members 表的 password 欄）。兩者都需要。'],
-    ['雙重身份', '樂行童軍同時是領袖：用 Email 登入是領袖身份；用 YMIS 登入是成員身份。'],
-    ['技術測試', 'sheep / 0728 在 Email 欄直接輸入即可。'],
     ['STAFF_TOKEN', 'SystemConfig 裡的 STAFF_TOKEN 可用來首次管理員登入。'],
     ['', ''],
     ['顏色說明', ''],
@@ -886,6 +887,111 @@ function buildDashboard(userId) {
   return state;
 }
 
+
+
+// ==================== 用戶功能權限 ====================
+
+var FEATURE_DEFAULTS = {
+  // admin 以上預設全部有
+  'admin': ['branches','members','applications','events','registrations','library_import','notices','users','settings','audit','calendar'],
+  'troop_super': ['branches','members','applications','events','registrations','library_import','notices','users','settings','audit','calendar'],
+  'super_admin': ['branches','members','applications','events','registrations','library_import','notices','users','settings','audit','calendar'],
+  // 團長：自己支部全部
+  'group_leader': ['members','applications','events','registrations','library_import','notices','calendar'],
+  // 支部領袖：自己支部
+  'branch_leader': ['members','applications','events','registrations','library_import','notices','calendar'],
+  // 教練員：預設只有活動和圖書館
+  'coach': ['events','registrations','library_import','notices'],
+  // 家長和成員不需要管理卡片
+  'parent': [],
+  'member': []
+};
+
+function getUserFeatures_(userId, role) {
+  var defaults = FEATURE_DEFAULTS[role] || [];
+  var overrides = {};
+  readTable_('UserPermissions').filter(function(p) {
+    return getField_(p, 'userId') === userId;
+  }).forEach(function(p) {
+    var feature = getField_(p, 'feature');
+    var granted = String(getField_(p, 'granted') || '').toLowerCase() === 'true';
+    overrides[feature] = granted;
+  });
+  // Merge: start with defaults, apply overrides
+  var result = [];
+  var seen = {};
+  // First add defaults that aren't overridden
+  defaults.forEach(function(f) {
+    if (overrides[f] !== false) { // not explicitly revoked
+      result.push(f);
+      seen[f] = true;
+    }
+  });
+  // Then add explicitly granted features not in defaults
+  Object.keys(overrides).forEach(function(f) {
+    if (overrides[f] && !seen[f]) {
+      result.push(f);
+    }
+  });
+  return result;
+}
+
+function handleGrantFeature_(p) {
+  appendRowByHeaders_('UserPermissions', {
+    userId: p.targetUserId,
+    feature: p.feature,
+    granted: p.granted !== false ? 'true' : 'false',
+    grantedBy: p.operatedBy || '',
+    grantedAt: now_(),
+    note: p.note || ''
+  });
+  writeAudit_(p.operatedBy || 'system', 'grantFeature', 'UserPermissions', p.targetUserId, p.feature + '=' + (p.granted !== false));
+  return { success: true };
+}
+
+function handleRevokeFeature_(p) {
+  // Find and remove the permission row
+  var sh = getSheet_('UserPermissions');
+  var data = sh.getDataRange().getValues();
+  var headers = data[0].map(function(h) { return String(h).trim(); });
+  var uidIdx = findColIndex_(headers, 'userId');
+  var featIdx = findColIndex_(headers, 'feature');
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (String(data[i][uidIdx]) === p.targetUserId && String(data[i][featIdx]) === p.feature) {
+      sh.deleteRow(i + 1);
+    }
+  }
+  writeAudit_(p.operatedBy || 'system', 'revokeFeature', 'UserPermissions', p.targetUserId, p.feature);
+  return { success: true };
+}
+
+// Get all features for a user with grant status (for UI)
+function handleGetUserFeatures_(p) {
+  var userId = p.targetUserId || '';
+  var users = readTable_('Users');
+  var user = users.filter(function(u){return getField_(u,'userId')===userId;})[0];
+  if (!user) return { success: false, error: '找不到用戶' };
+  var role = String(getField_(user, 'role')).toLowerCase();
+  var defaults = FEATURE_DEFAULTS[role] || [];
+  
+  var overrides = {};
+  readTable_('UserPermissions').filter(function(pm) {
+    return getField_(pm, 'userId') === userId;
+  }).forEach(function(pm) {
+    overrides[getField_(pm, 'feature')] = String(getField_(pm, 'granted') || '').toLowerCase() === 'true';
+  });
+  
+  var allFeatures = ['branches','members','applications','events','registrations','library_import','notices','users','settings','audit','calendar'];
+  var result = allFeatures.map(function(f) {
+    var isDefault = defaults.indexOf(f) >= 0;
+    var overridden = overrides[f] !== undefined;
+    var enabled = overridden ? overrides[f] : isDefault;
+    return { feature: f, enabled: enabled, isDefault: isDefault, overridden: overridden };
+  });
+  
+  return { success: true, features: result, role: role };
+}
+
 // ==================== doGet / API 分發 ====================
 
 function doGet(e) {
@@ -959,6 +1065,9 @@ function doGet(e) {
       case 'createRegularMeeting': return wrap_(handleCreateRegularMeeting_(p), p);
       case 'toggleMeetingCancel': return wrap_(handleToggleMeetingCancel_(p), p);
       case 'updatePdfTags': return wrap_(handleUpdatePdfTags_(p), p);
+      case 'grantFeature': return wrap_(handleGrantFeature_(p), p);
+      case 'revokeFeature': return wrap_(handleRevokeFeature_(p), p);
+      case 'getUserFeatures': return json(handleGetUserFeatures_(p));
       case 'saveConfig': return wrap_(handleSaveConfig_(p), p);
       case 'addAnnouncement': return wrap_(addAnnouncement(p), p);
       case 'getAnnouncements': return json(getAnnouncements(p));
