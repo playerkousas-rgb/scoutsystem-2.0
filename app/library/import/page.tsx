@@ -8,7 +8,7 @@ import { branches } from '@/lib/model';
 import { getSession } from '@/lib/session';
 
 const AUDIENCE_OPTIONS = ['全旅', '領袖', '成年成員', '小童軍', '幼童軍', '童軍', '深資童軍', '樂行童軍', '家長'];
-const ACTIVITY_TYPES = ['訓練班', '比賽', '服務', '課程', '活動', '會議', '營會', '其他'];
+const ACTIVITY_TYPES = ['訓練班', '比賽', '服務', '工作坊', '活動', '其他'];
 
 import { Suspense } from 'react';
 function ImportInner(){
@@ -147,7 +147,7 @@ function ImportInner(){
         <label>本旅截止日期<input type="date" value={internalDeadline} onChange={e=>setInternalDeadline(e.target.value)}/></label>
       </div>
       <label>參加資格 / 對象<input value={eligibility} onChange={e=>setEligibility(e.target.value)} placeholder="例如：童軍、深資童軍"/></label>
-      <label>活動類型
+      <label>通告類型
         <select value={activityType} onChange={e=>setActivityType(e.target.value)}>
           <option value="">— 選擇 —</option>
           {ACTIVITY_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
@@ -187,7 +187,7 @@ function ImportInner(){
         <label>本旅截止<input type="date" value={eInternalDeadline} onChange={e=>setEInternalDeadline(e.target.value)}/></label>
       </div>
       <label>參加資格 / 對象<input value={eEligibility} onChange={e=>setEEligibility(e.target.value)}/></label>
-      <label>活動類型
+      <label>通告類型
         <select value={eActivityType} onChange={e=>setEActivityType(e.target.value)}>
           <option value="">— 選擇 —</option>
           {ACTIVITY_TYPES.map(t=><option key={t} value={t}>{t}</option>)}

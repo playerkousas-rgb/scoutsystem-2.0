@@ -13,7 +13,7 @@ function addMonths(d:Date,n:number){const x=new Date(d);x.setMonth(x.getMonth()+
 
 export default function Calendar(){
   const [s,setS]=useState<AppState|null>(null);
-  const [session,setSessionState]=useState<Session|null>(null);
+  const [session,setSessionState]=useState<Session|null>(undefined);
   const [err,setErr]=useState('');
   const [child,setChild]=useState('all');
   const [view,setView]=useState<'month'|'list'>('month');
@@ -21,73 +21,78 @@ export default function Calendar(){
 
   useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message));setSessionState(getSession())},[]);
 
-  if(err)return <div className="card"><p className="badge red">{err}</p></div>;
-  if(!s)return <div className="card">載入中...</div>;
-
+  // Compute days (always called, no conditional hooks)
   const first=new Date(base.getFullYear(),base.getMonth(),1);
   const start=new Date(first);start.setDate(1-first.getDay());
   const days=Array.from({length:42},(_,i)=>{const d=new Date(start);d.setDate(start.getDate()+i);return d});
 
+  if(session===undefined)return <div className="card">載入中...</div>;
+  if(err&&!s)return <div className="card"><p className="badge red">{err}</p></div>;
+  if(!s)return <div className="card">載入中...</div>;
+
   // ===== 公開行事曆（已選旅團但未登入）=====
   if(!session){
-    const pubEvents=s.events.filter(e=>e.status==='published');
-    const pubMeetings=s.regularMeetings.filter(r=>r.enabled);
-    return (
-      <div className="stack">
-        <section className="hero">
-          <span className="badge gold">📅 公開行事曆</span>
-          <h1>旅團行事曆</h1>
-          <p>登入後可查看個人化行事曆及回覆活動。</p>
-          <Link className="btn primary" href="/login">登入</Link>
-        </section>
-        {err&&<p className="badge red">{err}</p>}
-        <section className="card stack">
-          <div className="row" style={{justifyContent:'space-between'}}>
-            <button className="btn" onClick={()=>setBase(addMonths(base,-1))}>← 上月</button>
-            <h2>{monthKey(base)}</h2>
-            <button className="btn" onClick={()=>setBase(addMonths(base,1))}>下月 →</button>
-          </div>
-          <div className="month-grid">
-            {weekdays.map(w=><div className="month-head" key={w}>星期{w}</div>)}
-            {days.map(d=>{
-              const date=ymd(d);
-              const items:{type:string;title:string;purple:boolean}[]=[];
-              pubEvents.filter(e=>e.date===date).forEach(e=>items.push({type:'event',title:e.title,purple:e.kind==='notice_troop_participation'}));
-              pubMeetings.forEach(r=>{if(d.getDay()===r.weekday){const c=isMeetingCancelled(s,r.branchId,date);if(!c)items.push({type:'meeting',title:r.title,purple:false})}});
-              return (
-                <div key={date} className={`month-cell ${d.getMonth()!==base.getMonth()?'dim':''}`}>
-                  <div className="day-num">{d.getDate()}</div>
-                  {items.slice(0,4).map((it,idx)=>(
-                    <div key={idx} className={`mini-event ${it.purple?'purple':''}`}>
-                      {it.type==='meeting'?'🔵':'🟣'} {it.title}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      </div>
-    );
+    try {
+      const pubEvents=(s.events||[]).filter(e=>e.status==='published');
+      const pubMeetings=(s.regularMeetings||[]).filter(r=>r.enabled);
+      return (
+        <div className="stack">
+          <section className="hero">
+            <span className="badge gold">📅 公開行事曆</span>
+            <h1>旅團行事曆</h1>
+            <p>登入後可查看個人化行事曆及回覆活動。</p>
+            <Link className="btn primary" href="/login">登入</Link>
+          </section>
+          <section className="card stack">
+            <div className="row" style={{justifyContent:'space-between'}}>
+              <button className="btn" onClick={()=>setBase(addMonths(base,-1))}>← 上月</button>
+              <h2>{monthKey(base)}</h2>
+              <button className="btn" onClick={()=>setBase(addMonths(base,1))}>下月 →</button>
+            </div>
+            <div className="month-grid">
+              {weekdays.map(w=><div className="month-head" key={w}>星期{w}</div>)}
+              {days.map(d=>{
+                const date=ymd(d);
+                const items:{type:string;title:string;purple:boolean}[]=[];
+                pubEvents.filter(e=>e.date===date).forEach(e=>items.push({type:'event',title:e.title,purple:e.kind==='notice_troop_participation'}));
+                pubMeetings.forEach(r=>{if(d.getDay()===r.weekday){try{const c=isMeetingCancelled(s,r.branchId,date);if(!c)items.push({type:'meeting',title:r.title,purple:false})}catch(e){}}});
+                return (
+                  <div key={date} className={`month-cell ${d.getMonth()!==base.getMonth()?'dim':''}`}>
+                    <div className="day-num">{d.getDate()}</div>
+                    {items.slice(0,4).map((it,idx)=>(
+                      <div key={idx} className={`mini-event ${it.purple?'purple':''}`}>
+                        {it.type==='meeting'?'🔵':'🟣'} {it.title}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      );
+    } catch(e:any) {
+      return <div className="card"><p className="badge red">行事曆載入失敗：{e?.message||String(e)}</p><Link className="btn primary" href="/login">登入</Link></div>;
+    }
   }
 
   // ===== 已登入的個人化行事曆 =====
   const role=session.role;
   const canCancel=['super_admin','troop_super','admin','group_leader','branch_leader'].includes(role);
-  const parent=role==='parent'?s.users.find(u=>u.id===session.userId):s.users.find(u=>u.role==='parent');
-  const children=s.members.filter(m=>(parent?.childMemberIds||[]).includes(m.id)||m.parentUserId===parent?.id);
+  const parent=role==='parent'?s.users.find(u=>u.id===session.userId):null;
+  const children=parent?(s.members||[]).filter(m=>(parent.childMemberIds||[]).includes(m.id)||m.parentUserId===parent.id):[];
 
-  async function cancelDay(branchId:string,date:string){setErr('');try{const f=await apiToggleMeetingCancel(branchId,date,'領袖標記不用集會');setS(f)}catch(e:any){setErr(e.message)}}
+  function cancelDay(branchId:string,date:string){setErr('');apiToggleMeetingCancel(branchId,date,'領袖標記不用集會').then(f=>setS(f)).catch(e=>setErr(e.message))}
 
   function visibleEvent(e:any){
-    if(role==='member'){const m=s.members.find(x=>x.id===session.memberId);return !!m&&e.targetMemberIds.includes(m.id)&&replyStatus(s,e.id,m.id)?.type!=='declined'}
-    if(role==='parent'){return children.some(c=>e.targetMemberIds.includes(c.id))}
+    if(role==='member'){const m=(s.members||[]).find(x=>x.id===session.memberId);return !!m&&e.targetMemberIds.includes(m.id)&&replyStatus(s,e.id,m.id)?.type!=='declined'}
+    if(role==='parent'&&children.length>0){return children.some(c=>e.targetMemberIds.includes(c.id))}
     return true;
   }
 
   function rightForEvent(e:any){
     if(['super_admin','troop_super','admin','group_leader','branch_leader','coach'].includes(role)){
-      const targets=s.members.filter(m=>e.targetMemberIds.includes(m.id));
+      const targets=(s.members||[]).filter(m=>e.targetMemberIds.includes(m.id));
       const counts:any={registered:0,interested:0,declined:0,unresponded:0};
       targets.forEach(m=>{const r=replyStatus(s,e.id,m.id);counts[r?.type||'unresponded']++});
       return `✅${counts.registered} ❤️${counts.interested} ⚠️${counts.unresponded}`;
@@ -100,22 +105,22 @@ export default function Calendar(){
     return '';
   }
 
-  const calendarItems=useMemo(()=>{
-    const items:any[]=[];
-    s.events.filter(e=>e.status==='published').filter(visibleEvent).forEach(e=>items.push({type:'event',date:e.date,title:e.title,purple:e.kind==='notice_troop_participation',event:e}));
-    s.regularMeetings.filter(r=>r.enabled).forEach(r=>{
-      for(let i=0;i<90;i++){
-        const d=new Date();d.setDate(d.getDate()+i);
-        const date=ymd(d);
-        if(d.getDay()!==r.weekday)continue;
-        const cancelled=isMeetingCancelled(s,r.branchId,date);
-        if(cancelled&&role==='member')continue;
-        items.push({type:'meeting',date,title:r.title,purple:false,cancelled,meeting:r});
-      }
-    });
-    return items;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[s,role,child,session?.memberId]);
+  const pubEvents=(s.events||[]).filter(e=>e.status==='published');
+  const visibleEvents=pubEvents.filter(visibleEvent);
+  
+  const calendarItems:{type:string;date:string;title:string;purple:boolean;cancelled?:boolean;event?:any;meeting?:any}[]=[];
+  visibleEvents.forEach(e=>calendarItems.push({type:'event',date:e.date,title:e.title,purple:e.kind==='notice_troop_participation',event:e}));
+  (s.regularMeetings||[]).filter(r=>r.enabled).forEach(r=>{
+    for(let i=0;i<90;i++){
+      const d=new Date();d.setDate(d.getDate()+i);
+      const date=ymd(d);
+      if(d.getDay()!==r.weekday)continue;
+      let cancelled=false;
+      try{cancelled=isMeetingCancelled(s,r.branchId,date)}catch(e){}
+      if(cancelled&&role==='member')continue;
+      calendarItems.push({type:'meeting',date,title:r.title,purple:false,cancelled,meeting:r});
+    }
+  });
 
   return (
     <div className="stack">
@@ -129,7 +134,7 @@ export default function Calendar(){
         </div>
       </section>
       {err&&<p className="badge red">{err}</p>}
-      {role==='parent'&&
+      {role==='parent'&&children.length>0&&
         <section className="card row">
           <strong>子女：</strong>
           <button className={`btn ${child==='all'?'primary':''}`} onClick={()=>setChild('all')}>全部</button>
@@ -173,7 +178,7 @@ export default function Calendar(){
             <div key={idx} className={`event-line ${it.purple?'event-purple':'event-blue'}`}>
               <div>
                 <strong>{it.cancelled?'已取消：':''}{it.type==='meeting'?'🔵':'🟣'} {it.title}</strong>
-                <div className="muted">{it.date}{it.type==='event'?` · ${it.event.location} · ${it.event.source}`:` · ${it.meeting.startTime}-${it.meeting.endTime} · ${it.meeting.location}`}</div>
+                <div className="muted">{it.date}{it.type==='event'?` · ${it.event?.location||'待定'} · ${it.event?.source||''}`:` · ${it.meeting?.startTime||''}-${it.meeting?.endTime||''} · ${it.meeting?.location||''}`}</div>
               </div>
               <div className="row">
                 {it.type==='event'?<span>{rightForEvent(it.event)}</span>:<span className={`badge ${it.cancelled?'red':'green'}`}>{it.cancelled?'不用集會':'恆常'}</span>}

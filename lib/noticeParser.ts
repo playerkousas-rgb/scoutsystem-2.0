@@ -153,7 +153,14 @@ export function parseNoticeText(rawText: string): ParsedNotice {
   }
   if (result.noticeType === 'meeting_schedule') result.addToCalendar = false;
   if (result.mode === 'troop_participation') result.addToCalendar = true;
-  if (!result.title) result.warnings.push('缺少「通告標題：」或「活動名稱：」。');
+  // Auto-fill internalDeadline from officialDeadline if not set
+  if (!result.internalDeadline && result.officialDeadline) {
+    result.internalDeadline = result.officialDeadline;
+  }
+  if (!result.internalDeadline && result.replyDeadline) {
+    result.internalDeadline = result.replyDeadline;
+  }
+  if (!result.title) result.warnings.push('缺少通告標題。');
   if (result.noticeType === 'meeting_schedule' && result.meetingItems.length === 0) result.warnings.push('日常集會安排建議使用「日期｜集合時間｜解散時間｜集合地點｜解散地點｜活動地點｜活動項目｜建議考核｜服飾｜費用｜備註」表格列。');
   if (!result.eligibility) result.warnings.push('建議加入「參加資格：」，方便判斷對象。');
   if (!result.fee) result.warnings.push('建議加入「收費：」，即使免費也寫「免費」。');
