@@ -720,6 +720,12 @@ function buildDashboard(userId) {
     plugins: [], audits: [], config: config
   };
 
+  // Always load announcement PDFs (for all logged-in users)
+  try {
+    var pdfResult = apiListAnnouncementPdfs();
+    if (pdfResult.success) state.announcementPdfs = pdfResult.files || [];
+  } catch (e) {}
+
   // 未登入或無效使用者：只回 config
   if (!user) {
     return state;

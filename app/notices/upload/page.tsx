@@ -132,6 +132,7 @@ export default function NoticeUpload(){
           )}
           <div className="grid">
             <label>通告標題<input defaultValue={parsed.title||''} onChange={e=>{parsed.title=e.target.value}} /></label>
+            <label>截止日期（已抽取，可修改）<input type="date" defaultValue={parsed.officialDeadline||parsed.internalDeadline||''} onChange={e=>{parsed.officialDeadline=e.target.value;setInternalDeadline(e.target.value)}} /></label>
             <label>活動日期<input defaultValue={parsed.eventDate||''} onChange={e=>{parsed.eventDate=e.target.value}} /></label>
             <label>集合時間<input defaultValue={parsed.gatherTime||''} /></label>
             <label>集合地點<input defaultValue={parsed.gatherLocation||''} /></label>
