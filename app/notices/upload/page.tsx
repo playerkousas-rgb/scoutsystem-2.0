@@ -1,9 +1,13 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 import { AppState, loadState } from '@/lib/store';
-import { apiImportBookmark, apiCreateEvent } from '@/lib/api';
+import { apiImportBookmark } from '@/lib/api';
 import { parseNoticeText, ParsedNotice } from '@/lib/noticeParser';
 import { branches } from '@/lib/model';
+import { getSession } from '@/lib/session';
+
+const NOTICE_TYPES = ['訓練班', '比賽', '服務', '工作坊', '活動', '其他'];
 
 export default function NoticeUpload(){
   const [s,setS]=useState<AppState|null>(null);
@@ -12,7 +16,15 @@ export default function NoticeUpload(){
   const [rawText,setRawText]=useState('');
   const [parsed,setParsed]=useState<ParsedNotice|null>(null);
   const [mode,setMode]=useState<'informational'|'troop_participation'>('troop_participation');
+  const [noticeType,setNoticeType]=useState('');
+  const [customType,setCustomType]=useState('');
+  const [notes,setNotes]=useState('');
+  const [selectedBranches,setSelectedBranches]=useState<string[]>([]);
+  const [selectedAudience,setSelectedAudience]=useState<string[]>([]);
+  const [internalDeadline,setInternalDeadline]=useState('');
   const fileRef=useRef<HTMLInputElement>(null);
+
+  const AUDIENCE_OPTIONS = ['全旅', '領袖', '成年成員', '小童軍', '幼童軍', '童軍', '深資童軍', '樂行童軍', '家長'];
 
   useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message))},[]);
 
@@ -46,40 +58,42 @@ export default function NoticeUpload(){
   async function save(){
     if(!parsed){setErr('請先抽取通告內容。');return;}
     setErr('');setMsg('');
+    const session=getSession();
     try{
+      const finalType = noticeType==='其他' ? customType : noticeType;
+      const branchTags=selectedBranches.length>0?selectedBranches.map(id=>branches.find(b=>b.id===id)?.short||id).join(','):'全旅';
+      const audienceTags=selectedAudience.join(',');
       if(mode==='troop_participation'){
-        const fresh=await apiCreateEvent({
+        const { apiCreateEvent } = await import('@/lib/api');
+        await apiCreateEvent({
           title:parsed.title||'未命名活動',
           scope:'troop',
-          date:parsed.eventDate||parsed.internalDeadline||'',
+          date:parsed.eventDate||internalDeadline||'',
           location:parsed.location||'待定',
           kind:'notice_troop_participation',
           status:'published',
           fee:parsed.fee||'',
-          source:'通告上傳',
+          source:'旅團通告',
         });
-        setS(fresh);
-        await apiImportBookmark({
-          title:parsed.title||'未命名活動',
-          mode:'troop_participation',
-          source:parsed.source||'通告上傳',
-          internalDeadline:parsed.internalDeadline||'',
-          fee:parsed.fee||'',
-        });
-        setMsg('✅ 通告已轉成活動並加入行事曆！');
-      }else{
-        const fresh=await apiImportBookmark({
-          title:parsed.title||'未命名通告',
-          mode:'informational',
-          source:parsed.source||'通告上傳',
-          internalDeadline:parsed.internalDeadline||'',
-          fee:parsed.fee||'',
-        });
-        setS(fresh);
-        setMsg('✅ 已加入資訊性通告。');
       }
+      await apiImportBookmark({
+        title:parsed.title||'未命名通告',
+        mode,
+        source:'旅團通告',
+        officialDeadline:parsed.officialDeadline||'',
+        internalDeadline,
+        fee:parsed.fee||'',
+        eligibility:parsed.eligibility||'',
+        activityType:finalType,
+        branchTags,
+        audienceTags,
+        note:notes||'',
+      });
       const updated=await loadState();
       setS(updated);
+      setMsg(mode==='troop_participation'?'✅ 通告已轉成活動並加入行事曆！':'✅ 已加入資訊性通告。');
+      setParsed(null);setRawText('');setNoticeType('');setCustomType('');setNotes('');
+      setSelectedBranches([]);setSelectedAudience([]);setInternalDeadline('');
     }catch(e:any){setErr(e.message)}
   }
 
@@ -89,11 +103,10 @@ export default function NoticeUpload(){
   return (
     <div className="stack">
       <section className="hero">
-        <span className="badge gold">通告上傳</span>
+        <span className="badge gold">旅團通告上傳</span>
         <h1>上傳 Word 通告</h1>
-        <p>上傳 .docx 或 .txt 通告，系統會抽取重點。旅團參與模式會建立活動並加入行事曆。</p>
+        <p>上傳旅團自己出的通告。系統會自動抽取重點，領袖確認後加上分類標籤。</p>
       </section>
-
       {err&&<p className="badge red">{err}</p>}
       {msg&&<p className="badge green">{msg}</p>}
 
@@ -118,37 +131,55 @@ export default function NoticeUpload(){
             </div>
           )}
           <div className="grid">
-            <label>標題<input defaultValue={parsed.title||''} /></label>
-            <label>來源<input defaultValue={parsed.source||''} /></label>
-            <label>活動日期<input defaultValue={parsed.eventDate||''} /></label>
-            <label>活動地點<input defaultValue={parsed.location||''} /></label>
+            <label>通告標題<input defaultValue={parsed.title||''} onChange={e=>{parsed.title=e.target.value}} /></label>
+            <label>活動日期<input defaultValue={parsed.eventDate||''} onChange={e=>{parsed.eventDate=e.target.value}} /></label>
             <label>集合時間<input defaultValue={parsed.gatherTime||''} /></label>
             <label>集合地點<input defaultValue={parsed.gatherLocation||''} /></label>
             <label>解散時間<input defaultValue={parsed.dismissTime||''} /></label>
             <label>解散地點<input defaultValue={parsed.dismissLocation||''} /></label>
-            <label>參加資格<input defaultValue={parsed.eligibility||''} /></label>
+            <label>活動地點<input defaultValue={parsed.location||''} /></label>
             <label>收費<input defaultValue={parsed.fee||''} /></label>
-            <label>本旅截止日期<input defaultValue={parsed.internalDeadline||''} /></label>
+            <label>參加資格<input defaultValue={parsed.eligibility||''} /></label>
           </div>
-          {parsed.meetingItems.length>0&&(
-            <div>
-              <strong>集會項目（{parsed.meetingItems.length} 項）：</strong>
-              <table className="table" style={{marginTop:8}}>
-                <thead><tr><th>日期</th><th>時間</th><th>地點</th><th>活動</th><th>費用</th></tr></thead>
-                <tbody>{parsed.meetingItems.map((m,i)=><tr key={i}><td>{m.date||'—'}</td><td>{m.gatherTime||''}-{m.dismissTime||''}</td><td>{m.location||''}</td><td>{m.activity||''}</td><td>{m.fee||''}</td></tr>)}</tbody>
-              </table>
-            </div>
-          )}
         </section>
       )}
 
       {parsed&&(
         <section className="card stack">
-          <h2>③ 接入模式</h2>
-          <div className="row">
-            <button className={`btn ${mode==='troop_participation'?'primary':''}`} onClick={()=>setMode('troop_participation')}>🏕️ 旅團參與（加入行事曆 + 家長回覆）</button>
-            <button className={`btn ${mode==='informational'?'primary':''}`} onClick={()=>setMode('informational')}>📢 資訊性（只作提醒，不加入行事曆）</button>
+          <h2>③ 分類與標籤</h2>
+          <label>通告類型
+            <select value={noticeType} onChange={e=>setNoticeType(e.target.value)}>
+              <option value="">— 選擇 —</option>
+              {NOTICE_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+            </select>
+          </label>
+          {noticeType==='其他'&&<label>自訂類型<input value={customType} onChange={e=>setCustomType(e.target.value)} placeholder="輸入自訂類型" /></label>}
+          
+          <label>本旅截止日期<input type="date" value={internalDeadline} onChange={e=>setInternalDeadline(e.target.value)} /></label>
+
+          <div>
+            <strong>適用支部：</strong>
+            <div className="row" style={{flexWrap:'wrap',gap:6,marginTop:4}}>
+              {branches.map(b=><button key={b.id} type="button" className={`btn ${selectedBranches.includes(b.id)?'primary':''}`} onClick={()=>setSelectedBranches(prev=>prev.includes(b.id)?prev.filter(x=>x!==b.id):[...prev,b.id])} style={{fontSize:'0.85em'}}>{b.short}</button>)}
+            </div>
+            <p className="muted">不選 = 全旅。</p>
           </div>
+          <div>
+            <strong>對象標籤：</strong>
+            <div className="row" style={{flexWrap:'wrap',gap:6,marginTop:4}}>
+              {AUDIENCE_OPTIONS.map(v=><button key={v} type="button" className={`btn ${selectedAudience.includes(v)?'primary':''}`} onClick={()=>setSelectedAudience(prev=>prev.includes(v)?prev.filter(x=>x!==v):[...prev,v])} style={{fontSize:'0.85em'}}>{v}</button>)}
+            </div>
+          </div>
+
+          <label>接入模式
+            <select value={mode} onChange={e=>setMode(e.target.value as any)}>
+              <option value="informational">📢 資訊性（不加入行事曆）</option>
+              <option value="troop_participation">🏕️ 旅團參與（加入行事曆 + 家長回覆）</option>
+            </select>
+          </label>
+
+          <label>備註<textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} placeholder="額外資訊" /></label>
+
           <button className="btn primary" onClick={save}>確認儲存</button>
         </section>
       )}

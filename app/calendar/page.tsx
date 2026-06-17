@@ -73,7 +73,7 @@ export default function Calendar(){
 
   // ===== 已登入的個人化行事曆 =====
   const role=session.role;
-  const canCancel=['super_admin','admin','group_leader','branch_leader'].includes(role);
+  const canCancel=['super_admin','troop_super','admin','group_leader','branch_leader'].includes(role);
   const parent=role==='parent'?s.users.find(u=>u.id===session.userId):s.users.find(u=>u.role==='parent');
   const children=s.members.filter(m=>(parent?.childMemberIds||[]).includes(m.id)||m.parentUserId===parent?.id);
 
@@ -86,7 +86,7 @@ export default function Calendar(){
   }
 
   function rightForEvent(e:any){
-    if(['admin','super_admin','group_leader','branch_leader','coach'].includes(role)){
+    if(['super_admin','troop_super','admin','group_leader','branch_leader','coach'].includes(role)){
       const targets=s.members.filter(m=>e.targetMemberIds.includes(m.id));
       const counts:any={registered:0,interested:0,declined:0,unresponded:0};
       targets.forEach(m=>{const r=replyStatus(s,e.id,m.id);counts[r?.type||'unresponded']++});
@@ -178,7 +178,7 @@ export default function Calendar(){
               <div className="row">
                 {it.type==='event'?<span>{rightForEvent(it.event)}</span>:<span className={`badge ${it.cancelled?'red':'green'}`}>{it.cancelled?'不用集會':'恆常'}</span>}
                 {it.type==='meeting'&&canCancel&&<button className="btn" onClick={()=>cancelDay(it.meeting.branchId,it.date)}>{it.cancelled?'恢復':'× 標記不用集會'}</button>}
-                {it.type==='event'&&['admin','super_admin','group_leader','branch_leader','coach'].includes(role)&&<a className="btn" href={`/admin/registrations?eventId=${it.event.id}`}>查看→</a>}
+                {it.type==='event'&&['super_admin','troop_super','admin','group_leader','branch_leader','coach'].includes(role)&&<a className="btn" href={`/admin/registrations?eventId=${it.event.id}`}>查看→</a>}
               </div>
             </div>
           ))}

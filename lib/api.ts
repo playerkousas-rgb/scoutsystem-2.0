@@ -166,7 +166,7 @@ export function apiTogglePatrol(patrolId: string) {
 
 // ==================== 圖書館標記 ====================
 
-export function apiImportBookmark(p: { title: string; mode: string; source?: string; officialDeadline?: string; internalDeadline?: string; branchTags?: string; audienceTags?: string; fee?: string; eligibility?: string; activityType?: string; date?: string }) {
+export function apiImportBookmark(p: { title: string; mode: string; source?: string; officialDeadline?: string; internalDeadline?: string; branchTags?: string; audienceTags?: string; fee?: string; eligibility?: string; activityType?: string; note?: string; date?: string }) {
   return apiMutate('importBookmark', p as any);
 }
 

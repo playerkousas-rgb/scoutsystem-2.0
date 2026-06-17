@@ -613,6 +613,8 @@ function mapBookmarks_() {
       ownerUserId: getField_(b, 'ownerUserId') || '',
       importedBy: getField_(b, 'createdBy') || ''
     };
+  }).filter(function(b) {
+    return b.status !== 'archived';
   });
 }
 
@@ -1826,10 +1828,16 @@ function handleUpdateBookmark_(p) {
 }
 
 function handleDeleteBookmark_(p) {
-  var idx = findRowIndexById_('LibraryBookmarks', 'bookmarkId', p.bookmarkId);
-  if (idx < 0) return { success: false, error: '找不到通告' };
-  getSheet_('LibraryBookmarks').deleteRow(idx + 1);
-  writeAudit_(p.operatedBy || 'system', 'deleteBookmark', 'LibraryBookmarks', p.bookmarkId, '');
+  // Soft delete: set status=archived (can restore from Sheet)
+  var hardDelete = p.hardDelete === 'true' || p.hardDelete === true;
+  if (hardDelete) {
+    var idx = findRowIndexById_('LibraryBookmarks', 'bookmarkId', p.bookmarkId);
+    if (idx < 0) return { success: false, error: '找不到通告' };
+    getSheet_('LibraryBookmarks').deleteRow(idx + 1);
+  } else {
+    updateCellByName_('LibraryBookmarks', 'bookmarkId', p.bookmarkId, 'status', 'archived');
+  }
+  writeAudit_(p.operatedBy || 'system', 'deleteBookmark', 'LibraryBookmarks', p.bookmarkId, hardDelete ? 'hard' : 'soft');
   return { success: true };
 }
 
@@ -2053,8 +2061,13 @@ function fixEventRepliesSheet() {
 // ==================== Drive：公告 PDF ====================
 
 function apiListAnnouncementPdfs() {
-  var folderId = getConfigValue_('ANNOUNCEMENT_FOLDER_ID');
-  if (!folderId) return { success: false, error: '未設定 ANNOUNCEMENT_FOLDER_ID' };
+  var folderInput = getConfigValue_('ANNOUNCEMENT_FOLDER_ID');
+  if (!folderInput) return { success: false, error: '未設定 ANNOUNCEMENT_FOLDER_ID' };
+  // Accept both full URL and raw ID
+  var folderId = folderInput;
+  if (folderInput.indexOf('/folders/') >= 0) {
+    folderId = folderInput.split('/folders/')[1].split('?')[0].split('&')[0];
+  }
   var folder = DriveApp.getFolderById(folderId);
   var files = folder.getFilesByType(MimeType.PDF);
   var out = [];
