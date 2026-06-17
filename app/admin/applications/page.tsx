@@ -33,7 +33,7 @@ export default function Page(){
   return <div className="stack">
     <section className="hero">
       <span className="badge gold">申請管理</span>
-      <h1>家長審核 / 申請管理</h1>
+      <h1>審核 / 申請管理</h1>
       <p>批核 / 拒絕申請。按批核後系統需要幾秒建立帳號，請稍候不要關閉頁面。</p>
     </section>
 

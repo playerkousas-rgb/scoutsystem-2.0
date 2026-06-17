@@ -21,7 +21,7 @@ export default function Leader(){
       <FeatureCard title="報名管理" icon="📋" text="查看報名狀態及匯出。" href="/admin/registrations"/>
       <FeatureCard title="圖書館標記" icon="📚" text="引入通告。" href="/library/import"/>
       <FeatureCard title="行事曆" icon="📅" text="查看及管理行事曆。" href="/calendar"/>
-      <FeatureCard title="家長審核" icon="✅" text="審核家長申請。" href="/admin/applications"/>
+      <FeatureCard title="審核" icon="✅" text="審核家長申請。" href="/admin/applications"/>
     </section>
   </div></Auth>;
 }

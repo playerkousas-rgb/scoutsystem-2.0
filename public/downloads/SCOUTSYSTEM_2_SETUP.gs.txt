@@ -96,7 +96,7 @@ function getInitialSheets_() {
       ['key', 'value', 'note'],
       ['TROOP_CODE', "'0082", '必填：旅團號，純數字。前面加單引號防止 Google Sheet 吃掉前面的 0。'],
       ['TROOP_NAME', '第82旅', '必填：旅團顯示名稱。'],
-      ['ADMIN_EMAIL', '', '必填：第一位管理員 Email。setup 後會自動建立 admin 帳號（預設密碼 changeme）。'],
+      ['ADMIN_EMAIL', '', '必填：第一位管理員 Email。填好後到選單 → 重新建立管理員帳號。'],
       ['ADMIN_DEFAULT_PASSWORD', 'changeme', '初始管理員預設密碼，登入後請修改。'],
       ['FRONTEND_URL', 'https://scoutsystem2.vercel.app/', '前端 Vercel 網址。預設是官方部署，如有自己部署的 URL 請更換。'],
       ['ANNOUNCEMENT_FOLDER_ID', '', '公告 PDF 的 Google Drive 資料夾 ID。取得方式：打開 Drive 資料夾，看網址 https://drive.google.com/drive/folders/XXXX，XXXX 就是 ID。資料夾需設為「知道連結的人都可檢視」。'],
@@ -143,7 +143,7 @@ function getInitialSheets_() {
     ],
     Users: [
       ['userId', 'name', 'email', 'password', 'role', 'branchId', 'memberId', 'approved', 'createdAt', 'note'],
-      ['u_admin', '旅團管理員', '', 'changeme', 'admin', '', '', true, now_(), '由 ADMIN_EMAIL 自動建立；請改密碼。']
+      ['u_admin', '管理員（待設定）', '', 'changeme', 'admin', '', '', true, now_(), 'placeholder。填好 ADMIN_EMAIL 後到選單 → 重新建立管理員帳號。']
     ],
     Applications: [
       ['applicationId', 'type', 'name', 'email', 'role', 'branchId', 'ymNumbers', 'status', 'createdAt', 'decidedAt', 'note']

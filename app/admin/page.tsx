@@ -21,7 +21,7 @@ export default function Admin(){
     <section className="grid">
       <FeatureCard title="支部管理" icon="🏢" text="管理支部及小隊 / 六。" href="/admin/branches"/>
       <FeatureCard title="成員資料庫" icon="👥" text="新增、編輯、連結家長。" href="/admin/members"/>
-      <FeatureCard title="家長審核 / 申請管理" icon="✅" text="審核申請，批核後自動建帳號。" href="/admin/applications"/>
+      <FeatureCard title="審核 / 申請管理" icon="✅" text="審核申請，批核後自動建帳號。" href="/admin/applications"/>
       <FeatureCard title="活動管理" icon="🗓️" text="新增、編輯、發布活動。" href="/admin/events"/>
       <FeatureCard title="報名管理" icon="📋" text="報名狀態、付款、匯出。" href="/admin/registrations"/>
       <FeatureCard title="圖書館引入" icon="📚" text="由童軍通告圖書館引入。" href="/library/import"/>

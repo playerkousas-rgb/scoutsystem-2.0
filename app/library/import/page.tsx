@@ -3,35 +3,42 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AppState, loadState } from '@/lib/store';
 import { apiImportBookmark } from '@/lib/api';
-import { getSession } from '@/lib/session';
 
 export default function Import(){
   const [s,setS]=useState<AppState|null>(null);const [err,setErr]=useState('');
   const [mode,setMode]=useState<'informational'|'troop_participation'>('informational');
-  const [title,setTitle]=useState('');const [internalDeadline,setInternalDeadline]=useState('');
-  const [officialDeadline,setOfficialDeadline]=useState('');const [fee,setFee]=useState('');
-  const [source,setSource]=useState('');const [msg,setMsg]=useState('');
+  const [title,setTitle]=useState('');
+  const [internalDeadline,setInternalDeadline]=useState('');
+  const [officialDeadline,setOfficialDeadline]=useState('');
+  const [fee,setFee]=useState('');
+  const [source,setSource]=useState('');
+  const [attachmentUrl,setAttachmentUrl]=useState('');
+  const [eligibility,setEligibility]=useState('');
+  const [msg,setMsg]=useState('');
+  const [loading,setLoading]=useState(false);
 
   useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message))},[]);
 
   async function save(){
     setErr('');setMsg('');
     if(!title.trim()){setErr('請填通告標題');return;}
+    setLoading(true);
     try{
-      const f=await apiImportBookmark({title,mode,source,officialDeadline,internalDeadline,fee});
-      // reload
+      const f=await apiImportBookmark({
+        title,mode,source,internalDeadline,officialDeadline,fee,
+      });
       const {loadState}=await import('@/lib/store');
       setS(await loadState());
       setMsg(mode==='troop_participation'?'✅ 已轉成活動並加入行事曆':'✅ 已加入資訊性通告');
-      setTitle('');setInternalDeadline('');setOfficialDeadline('');setFee('');setSource('');
-    }catch(e:any){setErr(e.message)}
+      setTitle('');setInternalDeadline('');setOfficialDeadline('');setFee('');setSource('');setAttachmentUrl('');setEligibility('');
+    }catch(e:any){setErr(e.message)}finally{setLoading(false)}
   }
 
   return <div className="stack">
     <section className="hero">
-      <span className="badge gold">圖書館引入</span>
+      <span className="badge gold">通告圖書館引入</span>
       <h1>由童軍通告圖書館引入</h1>
-      <p>童軍通告圖書館（scout-circulars.vercel.app）每天自動搜集全港通告。在圖書館看到適合的通告，按「加入 ScoutSystem」即可引入這裡。</p>
+      <p>童軍通告圖書館每天自動搜集全港通告。看到適合的通告，按「加入 ScoutSystem」即可自動引入。也可在下方手動引入。</p>
       <a className="btn primary" href="https://scout-circulars.vercel.app/" target="_blank">📚 打開童軍通告圖書館</a>
     </section>
 
@@ -39,14 +46,13 @@ export default function Import(){
     {msg&&<p className="badge green">{msg}</p>}
 
     <section className="card">
-      <h3>如何從圖書館引入？</h3>
+      <h3>從圖書館自動引入</h3>
       <ol className="muted">
-        <li>到 <Link href="https://scout-circulars.vercel.app/" target="_blank">童軍通告圖書館</Link></li>
-        <li>在圖書館頁面設定你的 ScoutSystem 網址（只需設定一次）</li>
-        <li>瀏覽通告，找到適合的，按「加入 ScoutSystem」</li>
-        <li>通告會自動引入到下方列表</li>
+        <li>到 <a href="https://scout-circulars.vercel.app/" target="_blank">童軍通告圖書館</a></li>
+        <li>在圖書館頁面點「儲存 ScoutSystem 網址」，填入你旅團的 Apps Script URL（只需一次）</li>
+        <li>找到適合的通告，按「加入 ScoutSystem」</li>
+        <li>通告會自動引入到下方列表（標題、來源、截止日期自動帶入）</li>
       </ol>
-      <p className="muted">也可以在下方手動引入一張通告（如果圖書館尚未收錄）。</p>
     </section>
 
     <section className="grid-wide">
@@ -64,14 +70,18 @@ export default function Import(){
 
     <section className="card stack">
       <h3>手動引入通告</h3>
-      <label>通告標題<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="例如：皮藝坊"/></label>
-      <label>來源<input value={source} onChange={e=>setSource(e.target.value)} placeholder="總會 / 地域 / 區會"/></label>
+      <p className="muted">從圖書館複製通告資料貼入，再由你確認。標題、來源、截止日期照抄圖書館；你只需加上本旅截止日期和確認費用。</p>
+      <label>通告標題（照抄圖書館）<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="例如：皮藝坊 - 貓頭鷹及小提琴皮革製造"/></label>
       <div className="grid">
-        <label>原通告截止日期<input type="date" value={officialDeadline} onChange={e=>setOfficialDeadline(e.target.value)}/></label>
-        <label>本旅截止日期<input type="date" value={internalDeadline} onChange={e=>setInternalDeadline(e.target.value)}/></label>
-        <label>費用<input value={fee} onChange={e=>setFee(e.target.value)} placeholder="$150"/></label>
+        <label>來源（照抄圖書館）<input value={source} onChange={e=>setSource(e.target.value)} placeholder="總會 / 地域 / 區會"/></label>
+        <label>費用（照抄圖書館，再確認）<input value={fee} onChange={e=>setFee(e.target.value)} placeholder="$150"/></label>
       </div>
-      <button className="btn primary" onClick={save}>引入此通告</button>
+      <div className="grid">
+        <label>原通告截止日期（照抄圖書館）<input type="date" value={officialDeadline} onChange={e=>setOfficialDeadline(e.target.value)}/></label>
+        <label>本旅截止日期（你設定）<input type="date" value={internalDeadline} onChange={e=>setInternalDeadline(e.target.value)}/></label>
+      </div>
+      <p className="muted">💡 本旅截止通常早於原通告截止，因為需要預留時間收表、整理。</p>
+      <button className="btn primary" disabled={loading} onClick={save}>{loading?'引入中...':'引入此通告'}</button>
     </section>
 
     {s&&s.bookmarks.length>0&&<section className="card">

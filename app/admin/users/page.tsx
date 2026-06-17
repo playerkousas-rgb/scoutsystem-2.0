@@ -14,6 +14,7 @@ export default function Page(){
   const [search,setSearch]=useState('');
   const [name,setName]=useState('');const [email,setEmail]=useState('');const [pw,setPw]=useState('changeme');
   const [role,setRole]=useState<Role>('parent');const [branchId,setBranchId]=useState('');
+  const [loading,setLoading]=useState(false);
 
   useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message))},[]);
 
@@ -22,7 +23,8 @@ export default function Page(){
   async function del(id:string,name:string){if(!confirm(`確定刪除 ${name} 的帳號？此操作不可復原。`))return;setErr('');try{const f=await apiDeleteUser(id);setS(f)}catch(e:any){setErr(e.message)}}
   async function add(){
     if(!name||!email){setErr('請填姓名及 Email');return;}
-    setErr('');try{const f=await apiCreateUser({name,email,password:pw,role,branchId:LEADER_ROLES.includes(role)?branchId:''});setS(f);setShowAdd(false);setName('');setEmail('')}catch(e:any){setErr(e.message)}
+    setErr('');setLoading(true);
+    try{const f=await apiCreateUser({name,email,password:pw,role,branchId:LEADER_ROLES.includes(role)?branchId:''});setS(f);setShowAdd(false);setName('');setEmail('')}catch(e:any){setErr(e.message)}finally{setLoading(false)}
   }
 
   if(!s)return <div className="card">{err||'載入中...'}</div>;
@@ -74,7 +76,7 @@ export default function Page(){
         <select value={role} onChange={e=>setRole(e.target.value as Role)}>{[...MANAGER_ROLES,...LEADER_ROLES,'parent'].map(r=><option key={r} value={r}>{ROLE_LABEL[r as Role]}</option>)}</select>
         {(LEADER_ROLES.includes(role))&&<select value={branchId} onChange={e=>setBranchId(e.target.value)}><option value="">選擇支部</option>{branches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select>}
       </div>
-      <button className="btn primary" onClick={add}>建立</button>
+      <button className="btn primary" disabled={loading} onClick={add}>{loading?'建立中...':'建立'}</button>
     </section>}
 
     <section className="card"><table className="table">

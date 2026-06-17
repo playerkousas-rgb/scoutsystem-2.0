@@ -11,6 +11,7 @@ export default function Page(){
   const [s,setS]=useState<AppState|null>(null);
   const [err,setErr]=useState('');
   const [showAdd,setShowAdd]=useState(false);
+  const [adding,setAdding]=useState(false);
   const [editing,setEditing]=useState<string|null>(null);
   // add form
   const [name,setName]=useState('');const [ym,setYm]=useState('');const [branch,setBranch]=useState('b3');
@@ -27,11 +28,11 @@ export default function Page(){
 
   async function add(){
     if(!name||!ym){setErr('請填姓名及 YMIS');return;}
-    setErr('');
+    setErr('');setAdding(true);
     try{
       const fresh=await apiCreateMember({name,ymNumber:ym,branchId:branch,patrolId:patrol,dateOfBirth:dob,parentUserId:parent||undefined,emergencyContactPhone:phone,emergencyContactName:emergencyName,password:memberPw||ym});
       setS(fresh);setName('');setYm('');setPatrol('');setParent('');setDob('');setPhone('');setEmergencyName('');setMemberPw('');setShowAdd(false);
-    }catch(e:any){setErr(e.message)}
+    }catch(e:any){setErr(e.message)}finally{setAdding(false)}
   }
 
   function startEdit(id:string){
@@ -92,7 +93,7 @@ export default function Page(){
         <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="緊急聯絡電話"/>
         <select value={parent} onChange={e=>setParent(e.target.value)}><option value="">未連結家長</option>{parents.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>
       </div>
-      <button className="btn primary" onClick={add}>新增成員</button>
+      <button className="btn primary" disabled={adding} onClick={add}>{adding?'新增中...':'新增成員'}</button>
     </section>}
 
     <section className="card">

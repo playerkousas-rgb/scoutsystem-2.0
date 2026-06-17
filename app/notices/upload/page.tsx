@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import { AppState, loadState } from '@/lib/store';
 import { apiImportBookmark, apiCreateEvent } from '@/lib/api';
 import { parseNoticeText, ParsedNotice } from '@/lib/noticeParser';
-import { getSession } from '@/lib/session';
+import { branches } from '@/lib/model';
 
 export default function NoticeUpload(){
   const [s,setS]=useState<AppState|null>(null);
@@ -26,7 +26,6 @@ export default function NoticeUpload(){
         setRawText(text);
         setParsed(parseNoticeText(text));
       }else if(file.name.endsWith('.docx')){
-        // 動態載入 mammoth
         const mammoth=await import('mammoth/mammoth.browser');
         const arrayBuffer=await file.arrayBuffer();
         const result=await mammoth.extractRawText({arrayBuffer});
@@ -47,9 +46,7 @@ export default function NoticeUpload(){
   async function save(){
     if(!parsed){setErr('請先抽取通告內容。');return;}
     setErr('');setMsg('');
-    const session=getSession();
     try{
-      // 旅團參與 → 建立活動 + 書籤
       if(mode==='troop_participation'){
         const fresh=await apiCreateEvent({
           title:parsed.title||'未命名活動',
@@ -66,25 +63,21 @@ export default function NoticeUpload(){
           title:parsed.title||'未命名活動',
           mode:'troop_participation',
           source:parsed.source||'通告上傳',
-          officialDeadline:parsed.officialDeadline||'',
           internalDeadline:parsed.internalDeadline||'',
           fee:parsed.fee||'',
         });
         setMsg('✅ 通告已轉成活動並加入行事曆！');
       }else{
-        // 資訊性 → 只加書籤
         const fresh=await apiImportBookmark({
           title:parsed.title||'未命名通告',
           mode:'informational',
           source:parsed.source||'通告上傳',
-          officialDeadline:parsed.officialDeadline||'',
           internalDeadline:parsed.internalDeadline||'',
           fee:parsed.fee||'',
         });
         setS(fresh);
         setMsg('✅ 已加入資訊性通告。');
       }
-      // 重新 load 取得更新
       const updated=await loadState();
       setS(updated);
     }catch(e:any){setErr(e.message)}
@@ -117,7 +110,7 @@ export default function NoticeUpload(){
 
       {parsed&&(
         <section className="card stack">
-          <h2>② 抽取結果（請確認）</h2>
+          <h2>② 抽取結果（請確認或修正）</h2>
           {parsed.warnings.length>0&&(
             <div style={{background:'#fff3cd',padding:8,borderRadius:8,marginBottom:8}}>
               <strong>⚠️ 提示：</strong>
@@ -125,14 +118,17 @@ export default function NoticeUpload(){
             </div>
           )}
           <div className="grid">
-            <label>標題<input defaultValue={parsed.title||''} readOnly /></label>
-            <label>來源<input defaultValue={parsed.source||''} readOnly /></label>
-            <label>活動日期<input defaultValue={parsed.eventDate||''} readOnly /></label>
-            <label>活動地點<input defaultValue={parsed.location||''} readOnly /></label>
-            <label>參加資格<input defaultValue={parsed.eligibility||''} readOnly /></label>
-            <label>收費<input defaultValue={parsed.fee||''} readOnly /></label>
-            <label>官方截止<input defaultValue={parsed.officialDeadline||''} readOnly /></label>
-            <label>本旅截止<input defaultValue={parsed.internalDeadline||''} readOnly /></label>
+            <label>標題<input defaultValue={parsed.title||''} /></label>
+            <label>來源<input defaultValue={parsed.source||''} /></label>
+            <label>活動日期<input defaultValue={parsed.eventDate||''} /></label>
+            <label>活動地點<input defaultValue={parsed.location||''} /></label>
+            <label>集合時間<input defaultValue={parsed.gatherTime||''} /></label>
+            <label>集合地點<input defaultValue={parsed.gatherLocation||''} /></label>
+            <label>解散時間<input defaultValue={parsed.dismissTime||''} /></label>
+            <label>解散地點<input defaultValue={parsed.dismissLocation||''} /></label>
+            <label>參加資格<input defaultValue={parsed.eligibility||''} /></label>
+            <label>收費<input defaultValue={parsed.fee||''} /></label>
+            <label>本旅截止日期<input defaultValue={parsed.internalDeadline||''} /></label>
           </div>
           {parsed.meetingItems.length>0&&(
             <div>
