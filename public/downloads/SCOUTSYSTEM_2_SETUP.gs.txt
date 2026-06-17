@@ -18,6 +18,7 @@
  */
 
 var SCOUTSYSTEM_VERSION = '2.0-live';
+var TECH_TEST_ACCOUNTS_ = ['sheep', '0728'];
 
 // ==================== 顏色 / 分頁設定 ====================
 
@@ -101,7 +102,7 @@ function getInitialSheets_() {
       ['FRONTEND_URL', 'https://scoutsystem2.vercel.app/', '前端 Vercel 網址。預設是官方部署，如有自己部署的 URL 請更換。'],
       ['ANNOUNCEMENT_FOLDER_ID', '', '公告 PDF 的 Google Drive 資料夾 ID。取得方式：打開 Drive 資料夾，看網址 https://drive.google.com/drive/folders/XXXX，XXXX 就是 ID。資料夾需設為「知道連結的人都可檢視」。'],
       ['REGISTRY_URL', 'https://troop-router.vercel.app/api/registry.json', '轉駁器 registry。'],
-      ['TECH_TEST_ACCOUNTS', 'sheep,0728', '技術測試帳號，權限等同最高。'],
+      
       ['STAFF_TOKEN', '', 'setup 自動生成；首次管理員 / 技術管理員登入用。']
     ],
     Roles: [
@@ -160,7 +161,7 @@ function getInitialSheets_() {
       ['replyId', 'eventId', 'memberId', 'parentUserId', 'type', 'operatedBy', 'updatedAt', 'paid', 'notes']
     ],
     LibraryBookmarks: [
-      ['bookmarkId', 'title', 'source', 'officialDeadline', 'internalDeadline', 'mode', 'activityType', 'eligibility', 'fee', 'branchTags', 'status', 'convertedEventId', 'createdBy', 'createdAt', 'note']
+      ['bookmarkId', 'title', 'source', 'officialDeadline', 'internalDeadline', 'mode', 'activityType', 'targetText', 'eligibility', 'fee', 'branchTags', 'audienceTags', 'status', 'convertedEventId', 'createdBy', 'createdAt', 'note']
     ],
     Announcements: [
       ['announcementId', 'title', 'source', 'month', 'publishDate', 'branchTags', 'folderUrl', 'documentUrl', 'createdAt', 'status', 'note']
@@ -588,12 +589,14 @@ function mapBookmarks_() {
       officialDeadline: fmtDate_(getField_(b, 'officialDeadline')),
       internalDeadline: fmtDate_(getField_(b, 'internalDeadline')),
       mode: getField_(b, 'mode') || 'informational',
+      activityType: getField_(b, 'activityType') || '',
+      targetText: getField_(b, 'targetText') || '',
+      eligibility: getField_(b, 'eligibility') || '',
+      fee: getField_(b, 'fee') || '',
       branchTags: parseArray_(getField_(b, 'branchTags')),
+      audienceTags: parseArray_(getField_(b, 'audienceTags')),
       status: getField_(b, 'status') || 'published',
       convertedEventId: getField_(b, 'convertedEventId') || '',
-      fee: getField_(b, 'fee') || '',
-      eligibility: getField_(b, 'eligibility') || '',
-      activityType: getField_(b, 'activityType') || '',
       importedBy: getField_(b, 'createdBy') || ''
     };
   });
@@ -653,7 +656,7 @@ function mapConfig_() {
  */
 function buildDashboard(userId) {
   // 技術測試帳號
-  var techAccounts = getConfigValue_('TECH_TEST_ACCOUNTS').split(',').map(function (s) { return s.trim(); });
+  var techAccounts = TECH_TEST_ACCOUNTS_;
   var isTechTest = techAccounts.indexOf(userId) >= 0;
 
   // 找使用者（先 Users，找不到再查 Members —— 成員可能只有 Members 沒有 Users）
@@ -903,7 +906,7 @@ function handleLogin_(p) {
   }
 
   // 技術測試帳號
-  var techAccounts = getConfigValue_('TECH_TEST_ACCOUNTS').split(',').map(function (s) { return s.trim(); });
+  var techAccounts = TECH_TEST_ACCOUNTS_;
   if (techAccounts.indexOf(identifier) >= 0) {
     return json({ success: true, user: {
       userId: identifier, name: identifier + '（技術測試）', role: 'super_admin',
@@ -991,10 +994,9 @@ function handleImportFromLibrary_(p) {
   var id = uid_('bkm');
   var mode = p.mode || 'informational';
   var convertedEventId = '';
-  var status = 'published';
+  var status = mode === 'troop_participation' ? 'converted' : 'published';
   if (mode === 'troop_participation') {
     convertedEventId = uid_('e');
-    status = 'converted';
     var members = readTable_('Members');
     var targets = members.map(function (m) { return getField_(m, 'memberId'); }).join(',');
     appendRowByHeaders_('Events', {
@@ -1010,7 +1012,13 @@ function handleImportFromLibrary_(p) {
     source: p.source || p.sourceSite || '',
     officialDeadline: p.deadline || p.officialDeadline || '',
     internalDeadline: '', mode: mode,
-    branchTags: p.branchTags || '全旅', status: status,
+    activityType: p.activityType || '',
+    targetText: p.targetText || p.target || '',
+    eligibility: p.eligibility || '',
+    fee: p.fee || '',
+    branchTags: p.branchTags || '全旅',
+    audienceTags: p.audienceTags || '',
+    status: status,
     convertedEventId: convertedEventId, createdBy: 'library',
     createdAt: now_(),
     note: p.url || p.attachmentUrl || p.note || ''
@@ -1532,7 +1540,7 @@ function getEventRegistrationSummary(p) {
 
 function toggleSystemLock(p) {
   var password = p.password || '';
-  var techAccounts = getConfigValue_('TECH_TEST_ACCOUNTS').split(',').map(function (s) { return s.trim(); });
+  var techAccounts = TECH_TEST_ACCOUNTS_;
   // 只允許技術測試帳號或 STAFF_TOKEN 操作
   if (password !== '0728' && password !== getConfigValue_('STAFF_TOKEN')) {
     return { success: false, error: '權限不足' };
@@ -1611,7 +1619,7 @@ function getPublicBootstrap() {
     TROOP_CODE: config.TROOP_CODE || '',
     TROOP_NAME: config.TROOP_NAME || '',
     REGISTRY_URL: config.REGISTRY_URL || '',
-    TECH_TEST_ACCOUNTS: config.TECH_TEST_ACCOUNTS || ''
+    
   };
   return {
     success: true,
