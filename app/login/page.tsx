@@ -96,7 +96,6 @@ export default function Login() {
         <button className="btn primary" disabled={loading} onClick={submit}>{loading ? '登入中...' : '登入'}</button>
         {msg && <p className="badge red">{msg}</p>}
       </section>
-      <p className="muted" style={{ textAlign: 'center' }}>技術測試帳號：在「領袖 / 家長」欄輸入 sheep 或 0728 即可（不需密碼）。</p>
     </div>
   );
 }
