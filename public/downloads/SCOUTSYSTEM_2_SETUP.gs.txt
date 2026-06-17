@@ -147,7 +147,7 @@ function getInitialSheets_() {
       ['u_admin', '超管（待設定）', '', 'changeme', 'troop_super', '', '', true, now_(), 'placeholder。填好 ADMIN_EMAIL 後到選單 → 重新建立管理員帳號。']
     ],
     Applications: [
-      ['applicationId', 'type', 'name', 'email', 'role', 'branchId', 'ymNumbers', 'status', 'createdAt', 'decidedAt', 'note']
+      ['applicationId', 'type', 'name', 'email', 'role', 'branchId', 'ymNumbers', 'dateOfBirth', 'gender', 'password', 'status', 'approvedBy', 'createdAt', 'decidedAt', 'note']
     ],
     Members: [
       ['memberId', 'ymNumber', 'password', 'name', 'branchId', 'patrolId', 'patrolRole', 'dateOfBirth', 'parentUserId', 'emergencyContactName', 'emergencyContactPhone', 'active', 'note'],
@@ -158,10 +158,10 @@ function getInitialSheets_() {
       ['eventId', 'title', 'scope', 'branchId', 'date', 'location', 'kind', 'status', 'source', 'fee', 'targetMemberIds', 'createdBy', 'createdAt', 'note']
     ],
     EventReplies: [
-      ['replyId', 'eventId', 'memberId', 'parentUserId', 'type', 'operatedBy', 'updatedAt', 'paid', 'notes']
+      ['replyId', 'eventId', 'memberId', 'memberName', 'branchId', 'parentUserId', 'type', 'operatedBy', 'paid', 'cancelled', 'createdAt', 'updatedAt', 'notes']
     ],
     LibraryBookmarks: [
-      ['bookmarkId', 'title', 'source', 'officialDeadline', 'internalDeadline', 'mode', 'activityType', 'targetText', 'eligibility', 'fee', 'branchTags', 'audienceTags', 'status', 'convertedEventId', 'createdBy', 'createdAt', 'note']
+      ['bookmarkId', 'circularKey', 'title', 'source', 'region', 'circularDate', 'sourceUrl', 'attachmentUrl', 'officialDeadline', 'internalDeadline', 'mode', 'activityType', 'targetText', 'eligibility', 'fee', 'branchTags', 'audienceTags', 'status', 'convertedEventId', 'ownerUserId', 'createdBy', 'createdAt', 'note']
     ],
     Announcements: [
       ['announcementId', 'title', 'source', 'month', 'publishDate', 'branchTags', 'folderUrl', 'documentUrl', 'createdAt', 'status', 'note']
@@ -316,7 +316,10 @@ function onOpen() {
     .addSeparator()
     .addItem('重新建立管理員帳號', 'reseedAdminMenu')
     .addSeparator()
-    .addItem('重新格式化 / 上色', 'reformatScoutSystem').addToUi();
+    .addItem('重新格式化 / 上色', 'reformatScoutSystem')
+    .addSeparator()
+    .addItem('修復 Applications 表', 'fixApplicationsSheet')
+    .addItem('修復 EventReplies 表', 'fixEventRepliesSheet').addToUi();
 }
 
 function reseedAdminMenu() {
@@ -570,12 +573,17 @@ function mapEvents_() {
 }
 
 function mapReplies_() {
-  return readTable_('EventReplies').map(function (r) {
+  return readTable_('EventReplies').filter(function(r) {
+    return String(getField_(r, 'cancelled') || 'false').toLowerCase() !== 'true';
+  }).map(function (r) {
     return {
       id: getField_(r, 'replyId'), eventId: getField_(r, 'eventId'),
-      memberId: getField_(r, 'memberId'), parentUserId: getField_(r, 'parentUserId') || '',
+      memberId: getField_(r, 'memberId'), memberName: getField_(r, 'memberName') || '',
+      branchId: getField_(r, 'branchId') || '',
+      parentUserId: getField_(r, 'parentUserId') || '',
       type: getField_(r, 'type') || 'interested', operatedBy: getField_(r, 'operatedBy') || 'member',
       paid: parseBool_(getField_(r, 'paid')),
+      cancelled: parseBool_(getField_(r, 'cancelled')),
       updatedAt: getField_(r, 'updatedAt') ? fmtDate_(getField_(r, 'updatedAt')) || getField_(r, 'updatedAt') : ''
     };
   });
@@ -585,7 +593,12 @@ function mapBookmarks_() {
   return readTable_('LibraryBookmarks').map(function (b) {
     return {
       id: getField_(b, 'bookmarkId'), title: getField_(b, 'title'),
+      circularKey: getField_(b, 'circularKey') || '',
       source: getField_(b, 'source') || '',
+      region: getField_(b, 'region') || '',
+      circularDate: fmtDate_(getField_(b, 'circularDate')),
+      sourceUrl: getField_(b, 'sourceUrl') || '',
+      attachmentUrl: getField_(b, 'attachmentUrl') || '',
       officialDeadline: fmtDate_(getField_(b, 'officialDeadline')),
       internalDeadline: fmtDate_(getField_(b, 'internalDeadline')),
       mode: getField_(b, 'mode') || 'informational',
@@ -597,6 +610,7 @@ function mapBookmarks_() {
       audienceTags: parseArray_(getField_(b, 'audienceTags')),
       status: getField_(b, 'status') || 'published',
       convertedEventId: getField_(b, 'convertedEventId') || '',
+      ownerUserId: getField_(b, 'ownerUserId') || '',
       importedBy: getField_(b, 'createdBy') || ''
     };
   });
@@ -753,13 +767,24 @@ function buildDashboard(userId) {
     state.cancelledMeetings = allCancelledMeetings.filter(function (c) { return c.branchId === branchId; });
 
   } else if (role === 'parent') {
-    // 家長：只看自己 + 子女
-    // 重新從 mapUsers_ 取得完整的 user（含 childMemberIds）
+    // 家長：只看自己 + 子女（含完整活動列表，1.0 邏輯）
     var fullParentUser = allUsers.filter(function (u) { return u.id === userId; })[0];
     if (fullParentUser) { state.users = [fullParentUser]; user = fullParentUser; }
     var childIds = (fullParentUser ? fullParentUser.childMemberIds : []) || [];
     var children = allMembers.filter(function (m) {
       return childIds.indexOf(m.id) >= 0 || m.parentUserId === userId;
+    });
+    // Also return emergency contact from parent user for each child
+    children = children.map(function(m) {
+      return {
+        id: m.id, ymNumber: m.ymNumber, name: m.name, branchId: m.branchId,
+        patrolId: m.patrolId, patrolRole: m.patrolRole, age: m.age,
+        dateOfBirth: m.dateOfBirth,
+        parentUserId: m.parentUserId,
+        emergencyContactName: fullParentUser ? fullParentUser.name : '',
+        emergencyContactPhone: '',
+        active: m.active
+      };
     });
     state.members = children;
     var childBranchIds = children.map(function (m) { return m.branchId; }).filter(function (v, i, a) { return a.indexOf(v) === i; });
@@ -775,8 +800,27 @@ function buildDashboard(userId) {
     state.cancelledMeetings = allCancelledMeetings.filter(function (c) { return childBranchIds.indexOf(c.branchId) >= 0; });
 
   } else if (role === 'member') {
-    // 成員：只看自己
+    // 成員：只看自己（含 emergencyContact，1.0 邏輯）
     var member = allMembers.filter(function (m) { return m.id === user.memberId || m.id === userId; })[0];
+    // Try to find parent and get emergency contact
+    if (member && member.parentUserId) {
+      var parentUser = allUsers.filter(function(u){return u.id===member.parentUserId;})[0];
+      if (parentUser) {
+        member.emergencyContactName = parentUser.name || member.emergencyContactName || '';
+      }
+    } else if (member && !member.parentUserId) {
+      // Auto-link: try to find parent by ymNumber (1.0 logic)
+      var memberYm = member.ymNumber;
+      var parents = allUsers.filter(function(u){return u.role==='parent';});
+      for (var pi = 0; pi < parents.length; pi++) {
+        var childYms = parseArray_(parents[pi].childMemberIds || parents[pi].ymNumbers || '');
+        if (childYms.indexOf(memberYm) >= 0) {
+          member.parentUserId = parents[pi].id;
+          member.emergencyContactName = parents[pi].name || '';
+          break;
+        }
+      }
+    }
     if (member) {
       state.members = [member];
       state.events = allEvents.filter(function (e) {
@@ -814,12 +858,20 @@ function doGet(e) {
       case 'getApplications':
         return json({ success: true, applications: filterApplications_(p.userId || '') });
 
+      case 'getEventReplies':
+        return json(getEventReplies(p));
       case 'getEventRegistrationSummary':
         return json(getEventRegistrationSummary(p));
 
       case 'getSystemStatus':
         return json(getSystemStatus());
 
+      case 'getPublicLibraryBookmarks':
+        return json(getPublicLibraryBookmarks());
+      case 'getPublicCalendarItems':
+        return json(getPublicCalendarItems());
+      case 'getTableData':
+        return json(getTableData(p));
       case 'getPublicBootstrap':
         return json(getPublicBootstrap());
 
@@ -859,6 +911,12 @@ function doGet(e) {
       case 'createRegularMeeting': return wrap_(handleCreateRegularMeeting_(p), p);
       case 'toggleMeetingCancel': return wrap_(handleToggleMeetingCancel_(p), p);
       case 'saveConfig': return wrap_(handleSaveConfig_(p), p);
+      case 'addAnnouncement': return wrap_(addAnnouncement(p), p);
+      case 'getAnnouncements': return json(getAnnouncements(p));
+      case 'deleteAnnouncement': return wrap_(deleteAnnouncement(p), p);
+      case 'addRow': return wrap_(genericAddRow(p), p);
+      case 'updateRow': return wrap_(genericUpdateRow(p), p);
+      case 'deleteRow': return wrap_(genericDeleteRow(p), p);
 
       default:
         return json({ success: false, error: '未知 action: ' + action });
@@ -892,6 +950,13 @@ function handleLogin_(p) {
   var identifier = (p.identifier || p.email || '').trim();
   var password = p.password || '';
   var loginType = p.loginType || 'account';
+
+  // 系統鎖檢查（1.0 邏輯）
+  var isLocked = String(getConfigValue_('system_locked') || '').toLowerCase() === 'true';
+  var isBackdoor = (TECH_TEST_ACCOUNTS_.indexOf(identifier) >= 0);
+  if (isLocked && !isBackdoor) {
+    return json({ success: false, error: '系統目前暫停服務，請稍後再試。' });
+  }
 
   // STAFF_TOKEN 登入
   if (loginType === 'staffToken' || (identifier === 'STAFF_TOKEN')) {
@@ -979,10 +1044,38 @@ function filterApplications_(userId) {
 
 function handleApplyJoin_(p) {
   var id = uid_('a');
+  // Extract password from note if present (format: pw:xxx)
+  var appNote = String(p.note || '');
+  var userPw = '';
+  var pwMatch = appNote.match(/pw:([^;]+)/);
+  if (pwMatch) userPw = pwMatch[1].trim();
+  // Extract dob from note if present
+  var userDob = '';
+  var dobMatch = appNote.match(/dob:([^;]+)/);
+  if (dobMatch) userDob = dobMatch[1].trim();
+  // Extract email for member from note if present
+  var memberEmail = '';
+  var emailMatch = appNote.match(/email:([^;]+)/);
+  if (emailMatch) memberEmail = emailMatch[1].trim();
+  // Clean note: remove parsed fields, keep phone
+  var cleanNote = appNote.split(';').filter(function(s){return s && !s.match(/^(pw|dob|email):/);}).join('; ').trim();
+
   appendRowByHeaders_('Applications', {
-    applicationId: id, type: p.type || 'parent', name: p.name || '', email: p.email || '',
-    role: p.role || 'parent', branchId: p.branchId || '', ymNumbers: p.ymNumbers || '',
-    status: 'pending', createdAt: now_(), decidedAt: '', note: p.note || ''
+    applicationId: id,
+    type: p.type || 'parent',
+    name: p.name || '',
+    email: p.email || memberEmail || '',
+    role: p.role || 'parent',
+    branchId: p.branchId || '',
+    ymNumbers: p.ymNumbers || '',
+    dateOfBirth: userDob || '',
+    gender: p.gender || '',
+    password: userPw || 'changeme',
+    status: 'pending',
+    approvedBy: '',
+    createdAt: now_(),
+    decidedAt: '',
+    note: cleanNote || ''
   });
   writeAudit_('anonymous', 'applyJoin', 'Applications', id, (p.name || '') + ' ' + (p.type || ''));
   return { success: true, applicationId: id, message: '申請已提交，請等待旅團審批。' };
@@ -1008,20 +1101,28 @@ function handleImportFromLibrary_(p) {
     });
   }
   appendRowByHeaders_('LibraryBookmarks', {
-    bookmarkId: id, title: p.title || '',
+    bookmarkId: id,
+    circularKey: p.circularKey || p.key || ('circular-' + Date.now()),
+    title: p.title || '',
     source: p.source || p.sourceSite || '',
+    region: p.region || '',
+    circularDate: p.date || p.circularDate || '',
+    sourceUrl: p.sourceUrl || p.url || '',
+    attachmentUrl: p.attachmentUrl || p.url || '',
     officialDeadline: p.deadline || p.officialDeadline || '',
     internalDeadline: '', mode: mode,
     activityType: p.activityType || '',
-    targetText: p.targetText || p.target || '',
-    eligibility: p.eligibility || '',
+    targetText: p.targetText || p.target || p.audience || '',
+    eligibility: p.eligibility || p.audience || '',
     fee: p.fee || '',
     branchTags: p.branchTags || '全旅',
     audienceTags: p.audienceTags || '',
     status: status,
-    convertedEventId: convertedEventId, createdBy: 'library',
+    convertedEventId: convertedEventId,
+    ownerUserId: 'library',
+    createdBy: 'library',
     createdAt: now_(),
-    note: p.url || p.attachmentUrl || p.note || ''
+    note: p.attachmentUrl || p.note || ''
   });
   writeAudit_('library', 'importFromLibrary', 'LibraryBookmarks', id, (p.title || ''));
   return { success: true, message: '已從圖書館引入：' + (p.title || '') };
@@ -1063,11 +1164,26 @@ function handleDecideApplication_(p) {
       var ymNumbers = getField_(app, 'ymNumbers');
       var userId = uid_('u');
 
-      // 從 note 提取密碼
+      // 從 Applications.password 提取密碼（優先），fallback 到 note
+      var appPw = String(getField_(app, 'password') || '').trim();
       var appNote = String(getField_(app, 'note') || '');
-      var userPw = 'changeme';
-      var pwMatch = appNote.match(/pw:([^;]+)/);
-      if (pwMatch) userPw = pwMatch[1].trim();
+      var userPw = appPw || 'changeme';
+      if (!appPw) {
+        var pwMatch = appNote.match(/pw:([^;]+)/);
+        if (pwMatch) userPw = pwMatch[1].trim();
+      }
+      // Extract dob from Applications.dateOfBirth or note
+      var userDob = String(getField_(app, 'dateOfBirth') || '').trim();
+      if (!userDob) {
+        var dobMatch = appNote.match(/dob:([^;]+)/);
+        if (dobMatch) userDob = dobMatch[1].trim();
+      }
+      // Extract member email from Applications.email or note
+      var memberEmail2 = String(getField_(app, 'email') || '').trim();
+      if (!memberEmail2) {
+        var emailMatch2 = appNote.match(/email:([^;]+)/);
+        if (emailMatch2) memberEmail2 = emailMatch2[1].trim();
+      }
 
       appendRowByHeaders_('Users', {
         userId: userId, name: name, email: email, password: userPw,
@@ -1273,12 +1389,23 @@ function handleSetReply_(p) {
     updateCellByName_('EventReplies', 'replyId', replyId, 'type', type);
     updateCellByName_('EventReplies', 'replyId', replyId, 'operatedBy', operatedBy);
     updateCellByName_('EventReplies', 'replyId', replyId, 'updatedAt', now_());
+    // Clear cancelled when upgrading from interested to registered/declined
+    if (type === 'registered' || type === 'declined') {
+      updateCellByName_('EventReplies', 'replyId', replyId, 'cancelled', 'false');
+    }
     if (parentUserId) updateCellByName_('EventReplies', 'replyId', replyId, 'parentUserId', parentUserId);
   } else {
+    // Get member info for memberName and branchId
+    var allMembers = readTable_('Members');
+    var member = allMembers.filter(function (m) { return getField_(m, 'memberId') === memberId; })[0];
+    var memberName = member ? (getField_(member, 'name') || '') : '';
+    var memberBranchId = member ? (getField_(member, 'branchId') || '') : '';
+
     appendRowByHeaders_('EventReplies', {
       replyId: replyId, eventId: eventId, memberId: memberId,
+      memberName: memberName, branchId: memberBranchId,
       parentUserId: parentUserId, type: type, operatedBy: operatedBy,
-      updatedAt: now_(), paid: false, notes: ''
+      paid: false, cancelled: false, createdAt: now_(), updatedAt: now_(), notes: ''
     });
   }
   writeAudit_(p.operatedBy || 'system', 'setReply', 'EventReplies', eventId, memberId + ' → ' + type);
@@ -1404,19 +1531,25 @@ function handleImportBookmark_(p) {
   }
   appendRowByHeaders_('LibraryBookmarks', {
     bookmarkId: id,
+    circularKey: p.circularKey || p.key || ('circular-' + Date.now()),
     title: p.title || '',
-    source: p.source || '',
-    officialDeadline: p.officialDeadline || '',
+    source: p.source || p.sourceSite || '',
+    region: p.region || '',
+    circularDate: p.date || p.circularDate || '',
+    sourceUrl: p.sourceUrl || '',
+    attachmentUrl: p.attachmentUrl || p.url || '',
+    officialDeadline: p.officialDeadline || p.deadline || '',
     internalDeadline: p.internalDeadline || '',
     mode: mode,
     activityType: p.activityType || '',
-    targetText: p.targetText || p.eligibility || '',
-    eligibility: p.eligibility || '',
+    targetText: p.targetText || p.target || p.audience || '',
+    eligibility: p.eligibility || p.audience || '',
     fee: p.fee || '',
     branchTags: p.branchTags || '全旅',
     audienceTags: p.audienceTags || '',
     status: status,
     convertedEventId: convertedEventId,
+    ownerUserId: p.operatedBy || '',
     createdBy: p.operatedBy || '',
     createdAt: now_(),
     note: p.note || ''
@@ -1485,8 +1618,8 @@ function handleCancelReply_(p) {
   var replyId = p.eventId + '_' + p.memberId;
   var idx = findRowIndexById_('EventReplies', 'replyId', replyId);
   if (idx < 0) return { success: false, error: '找不到報名記錄' };
-  // 軟刪除：標記 type=declined + 加 notes
-  updateCellByName_('EventReplies', 'replyId', replyId, 'type', 'declined');
+  // 1.0 邏輯：cancelled=true（軟刪除），不影響 type
+  updateCellByName_('EventReplies', 'replyId', replyId, 'cancelled', 'true');
   updateCellByName_('EventReplies', 'replyId', replyId, 'operatedBy', p.operatedBy || 'member');
   updateCellByName_('EventReplies', 'replyId', replyId, 'updatedAt', now_());
   writeAudit_(p.operatedBy || 'system', 'cancelReply', 'EventReplies', p.eventId, p.memberId + ' cancelled');
@@ -1494,6 +1627,84 @@ function handleCancelReply_(p) {
 }
 
 // ==================== 報名摘要（1.0 getEventRegistrationSummary） ====================
+
+
+
+// ==================== 報名記錄查詢（1.0 邏輯） ====================
+
+function getEventReplies(p) {
+  var eventId = p.eventId || '';
+  var memberId = p.memberId || '';
+  var memberIds = p.memberIds || '';
+  var userId = p.userId || '';
+
+  var allReplies = readTable_('EventReplies').filter(function(r) {
+    return String(getField_(r, 'cancelled') || 'false').toLowerCase() !== 'true';
+  });
+
+  var filtered = allReplies;
+
+  if (eventId) {
+    filtered = filtered.filter(function(r) { return getField_(r, 'eventId') === eventId; });
+  }
+  if (memberId) {
+    filtered = filtered.filter(function(r) { return getField_(r, 'memberId') === memberId; });
+  }
+  if (memberIds) {
+    var idList = String(memberIds).split(',').map(function(s){return s.trim();}).filter(Boolean);
+    filtered = filtered.filter(function(r) { return idList.indexOf(getField_(r, 'memberId')) >= 0; });
+  }
+
+  // Permission: leader only sees own branch
+  if (userId && !memberId && !memberIds) {
+    var users = readTable_('Users');
+    var requester = users.filter(function(u){return getField_(u,'userId')===userId;})[0];
+    var role = requester ? String(getField_(requester,'role')).toLowerCase() : '';
+    if (role !== 'super_admin' && role !== 'troop_super' && role !== 'admin') {
+      var reqBranchId = getField_(requester,'branchId') || '';
+      if (reqBranchId) {
+        filtered = filtered.filter(function(r) { return getField_(r,'branchId') === reqBranchId; });
+      }
+    }
+  }
+
+  // Fill memberName if missing
+  var members = readTable_('Members');
+  var result = filtered.map(function(r) {
+    var mId = getField_(r,'memberId');
+    var m = members.filter(function(x){return getField_(x,'memberId')===mId;})[0];
+    return {
+      replyId: getField_(r,'replyId') || '',
+      eventId: getField_(r,'eventId') || '',
+      memberId: mId,
+      memberName: getField_(r,'memberName') || (m ? getField_(m,'name') : ''),
+      branchId: getField_(r,'branchId') || '',
+      parentUserId: getField_(r,'parentUserId') || '',
+      operatedBy: getField_(r,'operatedBy') || '',
+      type: getField_(r,'type') || 'interested',
+      paid: getField_(r,'paid'),
+      cancelled: getField_(r,'cancelled') || false,
+      createdAt: getField_(r,'createdAt') || '',
+      updatedAt: getField_(r,'updatedAt') || ''
+    };
+  });
+
+  // If eventId, return categorized view
+  if (eventId) {
+    return {
+      success: true,
+      data: {
+        interested: result.filter(function(r){return r.type==='interested';}),
+        registered: result.filter(function(r){return r.type==='registered';}),
+        declined: result.filter(function(r){return r.type==='declined';}),
+        all: result
+      },
+      count: result.length
+    };
+  }
+
+  return { success: true, data: result, count: result.length };
+}
 
 function getEventRegistrationSummary(p) {
   var eventId = p.eventId || '';
@@ -1604,7 +1815,7 @@ function autoRepairParentLinks_() {
 // ==================== Library Bookmark Update / Delete ====================
 
 function handleUpdateBookmark_(p) {
-  var fields = ['title', 'source', 'officialDeadline', 'internalDeadline', 'mode', 'activityType', 'targetText', 'eligibility', 'fee', 'branchTags', 'audienceTags', 'status', 'note'];
+  var fields = ['title', 'source', 'region', 'circularDate', 'sourceUrl', 'attachmentUrl', 'officialDeadline', 'internalDeadline', 'mode', 'activityType', 'targetText', 'eligibility', 'fee', 'branchTags', 'audienceTags', 'status', 'note', 'convertedEventId'];
   fields.forEach(function (f) {
     if (p[f] !== undefined && p[f] !== null && p[f] !== '') {
       updateCellByName_('LibraryBookmarks', 'bookmarkId', p.bookmarkId, f, p[f]);
@@ -1620,6 +1831,33 @@ function handleDeleteBookmark_(p) {
   getSheet_('LibraryBookmarks').deleteRow(idx + 1);
   writeAudit_(p.operatedBy || 'system', 'deleteBookmark', 'LibraryBookmarks', p.bookmarkId, '');
   return { success: true };
+}
+
+
+// ==================== 公開讀取 API（1.0 邏輯） ====================
+
+function getPublicLibraryBookmarks() {
+  var bookmarks = mapBookmarks_().filter(function(b) {
+    return b.status !== 'archived';
+  });
+  return { success: true, data: bookmarks, count: bookmarks.length };
+}
+
+function getPublicCalendarItems() {
+  var events = mapEvents_().filter(function(e) {
+    return e.status === 'published' || e.status === 'active';
+  });
+  var branches = readTable_('Branches').map(function(b) {
+    return { id: getField_(b, 'branchId'), name: getField_(b, 'name'), shortName: getField_(b, 'shortName') };
+  });
+  return { success: true, data: { events: events, branches: branches }, count: events.length };
+}
+
+function getTableData(p) {
+  var tableName = p.table || p.tableName;
+  if (!tableName) return { success: false, error: 'Missing table name' };
+  var data = readTable_(tableName);
+  return { success: true, data: data, count: data.length };
 }
 
 // ==================== 公開 Bootstrap（給未登入頁用） ====================
@@ -1642,6 +1880,174 @@ function getPublicBootstrap() {
       })
     }
   };
+}
+
+
+
+// ==================== 通用 CRUD（1.0 邏輯） ====================
+
+function genericAddRow(p) {
+  var tableName = p.table || p.tableName;
+  if (!tableName) return { success: false, error: 'Missing table name' };
+  var idColumn = p.idColumn || 'id';
+  var idPrefix = p.idPrefix || 'row';
+  var fields = {};
+  // Copy all params except action/table/idColumn/idPrefix/operatedBy
+  for (var k in p) {
+    if (['action','table','tableName','idColumn','idPrefix','operatedBy'].indexOf(k) < 0) {
+      fields[k] = p[k];
+    }
+  }
+  if (!fields[idColumn]) fields[idColumn] = idPrefix + '_' + Date.now();
+  fields.createdAt = now_();
+  fields.updatedAt = now_();
+  appendRowByHeaders_(tableName, fields);
+  writeAudit_(p.operatedBy || 'system', 'addRow', tableName, fields[idColumn], '');
+  return { success: true, id: fields[idColumn] };
+}
+
+function genericUpdateRow(p) {
+  var tableName = p.table || p.tableName;
+  var id = p.id;
+  var idColumn = p.idColumn || 'id';
+  if (!tableName || !id) return { success: false, error: 'Missing table or id' };
+  var fields = {};
+  for (var k in p) {
+    if (['action','table','tableName','id','idColumn','idPrefix','operatedBy'].indexOf(k) < 0) {
+      fields[k] = p[k];
+    }
+  }
+  var updated = false;
+  for (var columnName in fields) {
+    updateCellByName_(tableName, idColumn, id, columnName, fields[columnName]);
+    updated = true;
+  }
+  if (!updated) return { success: false, error: 'No fields to update' };
+  updateCellByName_(tableName, idColumn, id, 'updatedAt', now_());
+  writeAudit_(p.operatedBy || 'system', 'updateRow', tableName, id, '');
+  return { success: true };
+}
+
+function genericDeleteRow(p) {
+  var tableName = p.table || p.tableName;
+  var id = p.id;
+  var idColumn = p.idColumn || 'id';
+  if (!tableName || !id) return { success: false, error: 'Missing table or id' };
+  var idx = findRowIndexById_(tableName, idColumn, id);
+  if (idx < 0) return { success: false, error: 'Row not found' };
+  getSheet_(tableName).deleteRow(idx + 1);
+  writeAudit_(p.operatedBy || 'system', 'deleteRow', tableName, id, '');
+  return { success: true };
+}
+
+
+
+// ==================== 內部通告系統（1.0 邏輯） ====================
+
+function addAnnouncement(p) {
+  var id = uid_('ann');
+  appendRowByHeaders_('Announcements', {
+    announcementId: id,
+    senderId: p.operatedBy || '',
+    senderName: p.senderName || '',
+    title: p.title || '',
+    message: p.message || '',
+    scope: p.scope || 'branch',
+    branchId: p.branchId || '',
+    status: 'active',
+    createdAt: now_(),
+    updatedAt: now_()
+  });
+  writeAudit_(p.operatedBy || 'system', 'addAnnouncement', 'Announcements', id, p.title || '');
+  return { success: true, announcementId: id };
+}
+
+function getAnnouncements(p) {
+  var userId = p.userId || '';
+  var announcements = readTable_('Announcements').filter(function(a) {
+    return String(getField_(a, 'status') || '').toLowerCase() !== 'archived';
+  });
+  // Filter by role/branch
+  var users = readTable_('Users');
+  var user = users.filter(function(u){return getField_(u,'userId')===userId;})[0];
+  if (user) {
+    var role = String(getField_(user, 'role')).toLowerCase();
+    var branchId = getField_(user, 'branchId') || '';
+    if (role !== 'super_admin' && role !== 'troop_super' && role !== 'admin') {
+      announcements = announcements.filter(function(a) {
+        var scope = String(getField_(a, 'scope')).toLowerCase();
+        var aBranch = getField_(a, 'branchId') || '';
+        return scope === 'troop' || aBranch === branchId || !aBranch;
+      });
+    }
+  }
+  return { success: true, data: announcements, count: announcements.length };
+}
+
+function deleteAnnouncement(p) {
+  updateCellByName_('Announcements', 'announcementId', p.announcementId, 'status', 'archived');
+  writeAudit_(p.operatedBy || 'system', 'deleteAnnouncement', 'Announcements', p.announcementId, '');
+  return { success: true };
+}
+
+
+
+// ==================== 維修工具（1.0 邏輯） ====================
+
+function fixApplicationsSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Applications') || ss.insertSheet('Applications');
+  var correctHeaders = [
+    'applicationId', 'type', 'name', 'email', 'role', 'branchId', 'ymNumbers',
+    'dateOfBirth', 'gender', 'password', 'status', 'approvedBy', 'createdAt', 'decidedAt', 'note'
+  ];
+  var data = sheet.getDataRange().getValues();
+  var rescued = [];
+  var currentHeaders = data.length > 0 ? data[0].map(function(h){return String(h).trim();}) : [];
+  for (var i = 1; i < data.length; i++) {
+    var hasData = false;
+    for (var x = 0; x < data[i].length; x++) { if (data[i][x] !== '' && data[i][x] !== null) { hasData = true; break; } }
+    if (!hasData) continue;
+    var rowObj = {};
+    for (var k = 0; k < currentHeaders.length && k < data[i].length; k++) { if (currentHeaders[k]) rowObj[currentHeaders[k]] = data[i][k]; }
+    rescued.push(rowObj);
+  }
+  sheet.clear();
+  sheet.getRange(1, 1, 1, correctHeaders.length).setValues([correctHeaders]);
+  for (var r = 0; r < rescued.length; r++) {
+    var row = rescued[r];
+    var mappedRow = correctHeaders.map(function(h) {
+      if (row[h] !== undefined && row[h] !== '') return row[h];
+      if (h === 'status') return 'pending';
+      if (h === 'createdAt') return now_();
+      return '';
+    });
+    sheet.appendRow(mappedRow);
+  }
+  return 'Applications 表已修復！搶救了 ' + rescued.length + ' 筆資料。';
+}
+
+function fixEventRepliesSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('EventReplies');
+  if (!sheet) return 'EventReplies 表不存在';
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0].map(function(h){return String(h).trim();});
+  var replyIdx = headers.indexOf('replyId');
+  var eventIdx = headers.indexOf('eventId');
+  var memberIdx = headers.indexOf('memberId');
+  if (replyIdx < 0 || eventIdx < 0 || memberIdx < 0) return '缺少必要欄位';
+  var fixed = 0;
+  for (var i = 1; i < data.length; i++) {
+    var replyId = String(data[i][replyIdx] || '');
+    var eventId = String(data[i][eventIdx] || '');
+    var memberId = String(data[i][memberIdx] || '');
+    if (memberId && eventId && replyId !== eventId + '_' + memberId) {
+      sheet.getRange(i + 1, replyIdx + 1).setValue(eventId + '_' + memberId);
+      fixed++;
+    }
+  }
+  return 'EventReplies 修復完成！修正了 ' + fixed + ' 筆記錄。';
 }
 
 // ==================== Drive：公告 PDF ====================

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { AppState, loadState, Bookmark } from '@/lib/store';
 import { apiImportBookmark, apiUpdateBookmark, apiDeleteBookmark } from '@/lib/api';
 import { branches } from '@/lib/model';
@@ -9,7 +10,8 @@ import { getSession } from '@/lib/session';
 const AUDIENCE_OPTIONS = ['全旅', '領袖', '成年成員', '小童軍', '幼童軍', '童軍', '深資童軍', '樂行童軍', '家長'];
 const ACTIVITY_TYPES = ['訓練班', '比賽', '服務', '課程', '活動', '會議', '營會', '其他'];
 
-export default function Import(){
+import { Suspense } from 'react';
+function ImportInner(){
   const [s,setS]=useState<AppState|null>(null);
   const [err,setErr]=useState('');
   const [msg,setMsg]=useState('');
@@ -18,7 +20,9 @@ export default function Import(){
   const session=getSession();
   const canImport=session && ['super_admin','troop_super','admin','group_leader','branch_leader','coach'].includes(session.role);
 
-  // New bookmark form
+  // 讀取從圖書館帶入的 URL 參數
+  const searchParams=useSearchParams();
+
   const [title,setTitle]=useState('');
   const [source,setSource]=useState('');
   const [officialDeadline,setOfficialDeadline]=useState('');
@@ -29,6 +33,7 @@ export default function Import(){
   const [selectedBranches,setSelectedBranches]=useState<string[]>([]);
   const [selectedAudience,setSelectedAudience]=useState<string[]>([]);
   const [mode,setMode]=useState<'informational'|'troop_participation'>('informational');
+  const [fromLibrary,setFromLibrary]=useState(false);
 
   // Edit form
   const [eTitle,setETitle]=useState('');
@@ -42,7 +47,23 @@ export default function Import(){
   const [eAudience,setEAudience]=useState<string[]>([]);
   const [eMode,setEMode]=useState<'informational'|'troop_participation'>('informational');
 
-  useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message))},[]);
+  useEffect(()=>{
+    loadState().then(setS).catch(e=>setErr(e.message));
+    // 從 URL 參數讀取圖書館資料
+    const pTitle=searchParams?.get('title')||'';
+    const pSource=searchParams?.get('sourceSite')||searchParams?.get('source')||'';
+    const pDeadline=searchParams?.get('deadline')||'';
+    const pFee=searchParams?.get('fee')||'';
+    const pAudience=searchParams?.get('audience')||'';
+    if(pTitle){
+      setFromLibrary(true);
+      setTitle(pTitle);
+      setSource(pSource);
+      setOfficialDeadline(pDeadline);
+      setFee(pFee);
+      setEligibility(pAudience);
+    }
+  },[searchParams]);
 
   async function save(){
     setErr('');setMsg('');
@@ -56,7 +77,7 @@ export default function Import(){
       setS(await loadState());
       setMsg(mode==='troop_participation'?'✅ 已轉成活動並加入行事曆':'✅ 已加入資訊性通告');
       setTitle('');setSource('');setOfficialDeadline('');setInternalDeadline('');setFee('');
-      setEligibility('');setActivityType('');setSelectedBranches([]);setSelectedAudience([]);setMode('informational');
+      setEligibility('');setActivityType('');setSelectedBranches([]);setSelectedAudience([]);setMode('informational');setFromLibrary(false);
     }catch(e:any){setErr(e.message)}finally{setLoading(false)}
   }
 
@@ -110,11 +131,12 @@ export default function Import(){
     {err&&<p className="badge red">{err}</p>}
     {msg&&<p className="badge green">{msg}</p>}
 
+    {fromLibrary&&<p className="badge green">📚 已從圖書館帶入資料，請確認後補上本旅截止日期和分類。</p>}
+
     {!canImport&&<section className="card"><p className="badge red">只有領袖可以引入通告。</p></section>}
 
     {canImport&&!editingId&&<section className="card stack">
-      <h3>引入通告</h3>
-      <p className="muted">從圖書館複製通告資料填入。圖書館已抽取的資料直接帶入，領袖確認後加上分類。</p>
+      <h3>{fromLibrary?'確認引入（資料已從圖書館帶入）':'引入通告'}</h3>
       <label>通告標題<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="例如：皮藝坊 - 貓頭鷹及小提琴皮革製造"/></label>
       <div className="grid">
         <label>來源<input value={source} onChange={e=>setSource(e.target.value)} placeholder="總會 / 地域 / 區會"/></label>
@@ -141,7 +163,7 @@ export default function Import(){
       <div>
         <strong>對象標籤：</strong>
         <div className="row" style={{flexWrap:'wrap',gap:6,marginTop:4}}>
-          {AUDIENCE_OPTIONS.map(a=><button key={a} type="button" className={`btn ${selectedAudience.includes(a)?'primary':''}`} onClick={()=>{setSelectedAudience(prev=>prev.includes(a)?prev.filter(x=>x!==a):[...prev,a])}} style={{fontSize:'0.85em'}}>{a}</button>)}
+          {AUDIENCE_OPTIONS.map(v=><button key={v} type="button" className={`btn ${selectedAudience.includes(v)?'primary':''}`} onClick={()=>{setSelectedAudience(prev=>prev.includes(v)?prev.filter(x=>x!==v):[...prev,v])}} style={{fontSize:'0.85em'}}>{v}</button>)}
         </div>
       </div>
       <label>接入模式
@@ -180,7 +202,7 @@ export default function Import(){
       <div>
         <strong>對象標籤：</strong>
         <div className="row" style={{flexWrap:'wrap',gap:6,marginTop:4}}>
-          {AUDIENCE_OPTIONS.map(a=><button key={a} type="button" className={`btn ${eAudience.includes(a)?'primary':''}`} onClick={()=>setEAudience(prev=>prev.includes(a)?prev.filter(x=>x!==a):[...prev,a])} style={{fontSize:'0.85em'}}>{a}</button>)}
+          {AUDIENCE_OPTIONS.map(v=><button key={v} type="button" className={`btn ${eAudience.includes(v)?'primary':''}`} onClick={()=>setEAudience(prev=>prev.includes(v)?prev.filter(x=>x!==v):[...prev,v])} style={{fontSize:'0.85em'}}>{v}</button>)}
         </div>
       </div>
       <label>接入模式
@@ -220,4 +242,8 @@ export default function Import(){
       </table>
     </section>}
   </div>;
+}
+
+export default function Import(){
+  return <Suspense fallback={<div className="card">載入中...</div>}><ImportInner /></Suspense>;
 }
