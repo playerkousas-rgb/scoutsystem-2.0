@@ -13,7 +13,7 @@ export function demoSession(role: Role): Session {
   if (typeof window !== 'undefined') { try { selected = JSON.parse(localStorage.getItem('scoutsystem2_selected_troop') || 'null'); } catch {} }
   const base = { troopCode: selected?.id || '0082', troopName: selected?.name || '第82旅' };
   const map: Record<Role, Session> = {
-    super_admin: { userId:'sheep', name:'Sheep / 0728 技術測試', role, ...base },
+    super_admin: { userId:'admin', name:'管理員', role, ...base },
     troop_super: { userId:'troop_super', name:'超管', role, ...base },
     admin: { userId:'u1', name:'陳管理員', role, ...base },
     group_leader: { userId:'u2', name:'李團長', role, branchId:'b3', ...base },
