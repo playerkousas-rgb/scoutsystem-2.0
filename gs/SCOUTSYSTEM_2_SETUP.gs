@@ -718,8 +718,11 @@ function buildDashboard(userId) {
     events: [], replies: [], bookmarks: [],
     announcements: [], announcementPdfs: [],
     regularMeetings: [], cancelledMeetings: [],
-    plugins: [], audits: [], config: config
+    plugins: [], audits: [], config: config,
+    userFeatures: []  // 當前用戶的功能權限
   };
+  // Fill userFeatures for current user
+  try { state.userFeatures = getUserFeatures_(userId, role); } catch(e) {}
 
   // Load announcement PDFs and filter by user role
   try {
@@ -950,19 +953,49 @@ function handleGrantFeature_(p) {
 }
 
 function handleRevokeFeature_(p) {
-  // Find and remove the permission row
+  var targetUserId = p.targetUserId;
+  var feature = p.feature;
+
+  // ★ 級聯撤銷：撤銷 targetUserId 的 feature 時，連帶撤銷所有由 targetUserId 授權的人
+  var toRevoke = [{ userId: targetUserId, feature: feature }];
+  var revokedSet = {};
+
+  while (toRevoke.length > 0) {
+    var current = toRevoke.shift();
+    var key = current.userId + '|' + current.feature;
+    if (revokedSet[key]) continue;
+    revokedSet[key] = true;
+
+    // Find all permissions where grantedBy = current.userId AND feature = current.feature
+    var allPerms = readTable_('UserPermissions');
+    allPerms.forEach(function(perm) {
+      if (getField_(perm, 'grantedBy') === current.userId && getField_(perm, 'feature') === current.feature) {
+        var childUserId = getField_(perm, 'userId');
+        var childKey = childUserId + '|' + current.feature;
+        if (!revokedSet[childKey]) {
+          toRevoke.push({ userId: childUserId, feature: current.feature });
+        }
+      }
+    });
+  }
+
+  // Now delete all revoked permissions
   var sh = getSheet_('UserPermissions');
   var data = sh.getDataRange().getValues();
   var headers = data[0].map(function(h) { return String(h).trim(); });
   var uidIdx = findColIndex_(headers, 'userId');
   var featIdx = findColIndex_(headers, 'feature');
+  var grantedByIdx = findColIndex_(headers, 'grantedBy');
+
   for (var i = data.length - 1; i >= 1; i--) {
-    if (String(data[i][uidIdx]) === p.targetUserId && String(data[i][featIdx]) === p.feature) {
+    var rowKey = String(data[i][uidIdx]) + '|' + String(data[i][featIdx]);
+    if (revokedSet[rowKey]) {
       sh.deleteRow(i + 1);
     }
   }
-  writeAudit_(p.operatedBy || 'system', 'revokeFeature', 'UserPermissions', p.targetUserId, p.feature);
-  return { success: true };
+
+  writeAudit_(p.operatedBy || 'system', 'revokeFeature', 'UserPermissions', targetUserId, feature + ' (cascade: ' + Object.keys(revokedSet).length + ' users)');
+  return { success: true, cascadeCount: Object.keys(revokedSet).length };
 }
 
 // Get all features for a user with grant status (for UI)

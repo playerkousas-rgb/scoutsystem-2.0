@@ -16,7 +16,7 @@ export type CancelledMeeting = { id:string; branchId:string; date:string; reason
 export type Announcement = { id:string; title:string; source?:string; month?:string; publishDate?:string; branchTags:string[]; folderUrl?:string; documentUrl?:string; rawText?:string; createdAt:string; status:'published'|'archived' };
 export type PluginCard = { id:string; title:string; icon:string; tier:2|3; url:string; embed:boolean; minRole:Role; enabled:boolean; order:number };
 export type Audit = { id:string; userId:string; action:string; entity:string; entityId:string; createdAt:string; detail:string };
-export type AppState = { patrols:Patrol[]; users:User[]; members:Member[]; applications:Application[]; events:EventItem[]; replies:Reply[]; bookmarks:Bookmark[]; announcements:Announcement[]; announcementPdfs:AnnouncementPdf[]; regularMeetings:RegularMeeting[]; cancelledMeetings:CancelledMeeting[]; plugins:PluginCard[]; audits:Audit[]; config:Record<string,string> };
+export type AppState = { patrols:Patrol[]; users:User[]; members:Member[]; applications:Application[]; events:EventItem[]; replies:Reply[]; bookmarks:Bookmark[]; announcements:Announcement[]; announcementPdfs:AnnouncementPdf[]; regularMeetings:RegularMeeting[]; cancelledMeetings:CancelledMeeting[]; plugins:PluginCard[]; audits:Audit[]; config:Record<string,string>; userFeatures?:string[] };
 
 // ==================== 載入（API） ====================
 
