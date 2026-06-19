@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { setSession } from '@/lib/session';
+import { apiLogin } from '@/lib/api';
 import Link from 'next/link';
 
 type Tab = 'account' | 'member' | 'staffToken';
@@ -19,26 +20,17 @@ export default function Login() {
 
   async function submit() {
     setMsg('');
-    if (!troop?.webAppUrl) { setMsg('請先在首頁連接旅團。'); return; }
+    if (!troop?.key) { setMsg('請先在首頁選擇旅團。'); return; }
     if (!identifier.trim() && tab !== 'staffToken') { setMsg('請填入登入資料。'); return; }
     if (tab === 'staffToken' && !password) { setMsg('請填 STAFF_TOKEN。'); return; }
     setLoading(true);
     try {
-      const url = new URL(troop.webAppUrl);
-      url.searchParams.set('action', 'login');
-      if (tab === 'staffToken') {
-        url.searchParams.set('identifier', 'STAFF_TOKEN');
-        url.searchParams.set('password', password);
-        url.searchParams.set('loginType', 'staffToken');
-      } else {
-        url.searchParams.set('identifier', identifier.trim());
-        url.searchParams.set('password', password);
-        url.searchParams.set('loginType', tab);
-      }
-      const res = await fetch(url.toString(), { cache: 'no-store' });
-      const text = await res.text();
-      if (/Access Denied|<html|<!doctype/i.test(text)) throw new Error('Apps Script Access Denied，請確認 Deploy → 任何人。');
-      const data = JSON.parse(text);
+      const loginType = tab;
+      const data = await apiLogin({
+        identifier: tab === 'staffToken' ? 'STAFF_TOKEN' : identifier.trim(),
+        password,
+        loginType
+      });
       if (!data.success) throw new Error(data.error || '登入失敗');
       const u = data.user;
       setSession({
@@ -57,8 +49,8 @@ export default function Login() {
   if (!troop) return (
     <section className="hero">
       <span className="badge red">未選旅團</span>
-      <h1>請先連接旅團</h1>
-      <p>實測模式需要先在首頁填入 Apps Script URL。</p>
+      <h1>請先選擇旅團</h1>
+      <p>請先到首頁選擇你的旅團。</p>
       <Link className="btn primary" href="/">返回首頁</Link>
     </section>
   );
