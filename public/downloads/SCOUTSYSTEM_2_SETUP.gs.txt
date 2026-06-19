@@ -72,8 +72,10 @@ function setupScoutSystem() {
     + '5. 到系統前端「申請接入」頁面，填入 /exec 網址和下面的 API Key\n'
     + '6. 等平台管理員開通 → 選擇旅團 → 用 email + changeme 登入\n\n'
     + '🔑 你的 API Key（只顯示一次，請即複製）：\n'
-    + (apiKeyPlain || '（已在 SystemConfig 設定）') + '\n\n'
-    + '⚠️ 此 Key 不會再出現！請立即複製，稍後在「申請接入」頁面填入。\n'
+    + '───────────────────────\n'
+    + (apiKeyPlain || '（已在 SystemConfig 設定）') + '\n'
+    + '───────────────────────\n\n'
+    + '⚠️ 複製時只取上下橫線之間的文字，不要包含空格或換行！\n'
     + 'SystemConfig 只儲存此 Key 的雜湊值，無法還原。\n'
     + '忘記了？到選單 → 重新生成 API Key。',
     SpreadsheetApp.getUi().ButtonSet.OK
@@ -374,8 +376,12 @@ function regenerateApiKeyMenu() {
   if (newKey) {
     SpreadsheetApp.getUi().alert(
       '🔑 新 API Key 已生成',
-      '新 API Key（只顯示一次，請即複製）：\\n\\n' + newKey
-      + '\\n\\n⚠️ 舊 Key 即刻失效！'
+      '新 API Key（只顯示一次，請即複製）：\\n'
+      + '───────────────────────\\n'
+      + newKey
+      + '\\n───────────────────────\\n\\n'
+      + '⚠️ 複製時只取上下橫線之間的文字，不要包含空格或換行！\\n\\n'
+      + '舊 Key 即刻失效！'
       + '\\n請把新 Key 交給平台管理員更新。'
       + '\\nSystemConfig 只存雜湊值，無法還原。',
       SpreadsheetApp.getUi().ButtonSet.OK
