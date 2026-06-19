@@ -14,7 +14,7 @@
  *   1. Google Sheet → Extensions → Apps Script 貼上整份
  *   2. Run setupScoutSystem()
  *   3. Deploy → Web App → Execute as Me, Anyone
- *   4. 把 /exec URL 填入前端
+ *   4. 把 /exec URL 和 API Key 提交到前端「申請接入」頁面
  */
 
 var SCOUTSYSTEM_VERSION = '2.0-live';
@@ -55,7 +55,7 @@ function setupScoutSystem() {
   formatScoutSystemSheets_(ss);
   addHelpfulNotes_(ss);
   seedInitialAdmin_(ss);
-  generateStaffToken_(ss);
+  var apiKeyPlain = generateStaffToken_(ss);
   hideAdvancedSheets();
 
   var readme = ss.getSheetByName('README_新手必看');
@@ -64,31 +64,50 @@ function setupScoutSystem() {
   SpreadsheetApp.getUi().alert(
     'ScoutSystem 2.0 初始化完成',
     '已建立工作表、標記顏色、加上欄位說明，並隱藏進階後台分頁。\n\n'
-    + '請照 README_新手必看：\n'
-    + '1. 到黃色 SystemConfig 填旅團資料\n'
-    + '2. 到綠色 Branches 確認支部，Patrols 改小隊\n'
-    + '3. 到藍色 Members 建立成員\n'
-    + '4. Deploy 為 Web App（Anyone）\n'
-    + '5. 把 /exec URL 填入前端\n'
-    + '6. 首次管理員可用 STAFF_TOKEN 或 admin email + changeme 登入',
+    + '接下來：\n'
+    + '1. 到黃色 SystemConfig 填 TROOP_CODE、TROOP_NAME、ADMIN_EMAIL\n'
+    + '2. 到 Members 輸入成員\n'
+    + '3. Deploy 為 Web App（執行身分：我 → 誰可以存取：任何人）\n'
+    + '4. 複製 /exec 網址\n'
+    + '5. 到系統前端「申請接入」頁面，填入 /exec 網址和下面的 API Key\n'
+    + '6. 等平台管理員開通 → 選擇旅團 → 用 email + changeme 登入\n\n'
+    + '🔑 你的 API Key（只顯示一次，請即複製）：\n'
+    + (apiKeyPlain || '（已在 SystemConfig 設定）') + '\n\n'
+    + '⚠️ 此 Key 不會再出現！請立即複製，稍後在「申請接入」頁面填入。\n'
+    + 'SystemConfig 只儲存此 Key 的雜湊值，無法還原。\n'
+    + '忘記了？到選單 → 重新生成 API Key。',
     SpreadsheetApp.getUi().ButtonSet.OK
   );
 }
 
 function setup() { setupScoutSystem(); }
 
+/** SHA-256 雜湊（用於 API_KEY 驗證，不存明文） */
+function sha256_(str) {
+  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, str);
+  return digest.map(function(b) { return ('0' + (b & 0xFF).toString(16)).slice(-2); }).join('');
+}
+
 function generateStaffToken_(ss) {
   var sh = ss.getSheetByName('SystemConfig');
   if (!sh) return;
   var values = sh.getDataRange().getValues();
+  var generatedApiKey = '';
   for (var i = 1; i < values.length; i++) {
-    if (values[i][0] === 'STAFF_TOKEN' && !values[i][1]) {
+    var key = String(values[i][0] || '');
+    if (key === 'STAFF_TOKEN' && !values[i][1]) {
       var token = 'sk_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
       sh.getRange(i + 1, 2).setValue(token);
       sh.getRange(i + 1, 3).setValue('setup 自動生成；首次管理員登入用。');
-      return;
+    }
+    if (key === 'API_KEY_HASH' && !values[i][1]) {
+      generatedApiKey = 'ak_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+      var hash = sha256_(generatedApiKey);
+      sh.getRange(i + 1, 2).setValue(hash);
+      sh.getRange(i + 1, 3).setValue('setup 自動生成；API_KEY 的 SHA-256 雜湊值，用於驗證前端請求。明文不會儲存在此。');
     }
   }
+  return generatedApiKey;
 }
 
 function getInitialSheets_() {
@@ -99,11 +118,11 @@ function getInitialSheets_() {
       ['TROOP_NAME', '第82旅', '必填：旅團顯示名稱。'],
       ['ADMIN_EMAIL', '', '必填：第一位管理員 Email。填好後到選單 → 重新建立管理員帳號。'],
       ['ADMIN_DEFAULT_PASSWORD', 'changeme', '初始管理員預設密碼，登入後請修改。'],
-      ['FRONTEND_URL', 'https://scoutsystem2.vercel.app/', '前端 Vercel 網址。預設是官方部署，如有自己部署的 URL 請更換。'],
       ['ANNOUNCEMENT_FOLDER_ID', '', '公告 PDF 的 Google Drive 資料夾 ID。取得方式：打開 Drive 資料夾，看網址 https://drive.google.com/drive/folders/XXXX，XXXX 就是 ID。資料夾需設為「知道連結的人都可檢視」。'],
       ['REGISTRY_URL', 'https://troop-router.vercel.app/api/registry.json', '轉駁器 registry。'],
       
-      ['STAFF_TOKEN', '', 'setup 自動生成；首次管理員 / 技術管理員登入用。']
+      ['STAFF_TOKEN', '', 'setup 自動生成；首次管理員 / 技術管理員登入用。'],
+      ['API_KEY_HASH', '', 'setup 自動生成；API_KEY 的 SHA-256 雜湊值。明文不會儲存在此。']
     ],
     Roles: [
       ['role', 'label', 'level', 'defaultLanding', 'note'],
@@ -211,28 +230,36 @@ function setupReadmeSheet_(ss) {
   var sh = ss.getSheetByName(name) || ss.insertSheet(name, 0);
   sh.showSheet(); sh.clear();
   var rows = [
-    ['ScoutSystem 2.0 小白設定指南', ''],
+    ['ScoutSystem 2.0 旅團設定指南', ''],
     ['', ''],
-    ['你現在需要做的事', '照順序完成。'],
-    ['1', '到黃色 SystemConfig 填 TROOP_CODE、TROOP_NAME、ADMIN_EMAIL。'],
-    ['2', '到綠色 Branches 確認支部。enabled = TRUE 表示支部啟用，不是指小隊。'],
-    ['3', '到綠色 Patrols 修改小隊名稱（童軍預設英文 TIGER / SEAGULL / WOLF）。'],
-    ['4', '到藍色 Members 輸入成員。每個必須填 ymNumber（10位數字）和 password（密碼）。範例已提供兩行。'],
-    ['5', '上方選單 ScoutSystem 2.0 → 重新建立管理員帳號。會根據 ADMIN_EMAIL 自動建立 admin，不需手動打開 Users。'],
-    ['6', '回到此 Apps Script 編輯器 → 右上方「部署」→「網頁應用程式」→ 執行身分：我 → 誰可以存取：任何人 → 部署。'],
-    ['7', '複製部署後的 /exec 網址，提交旅團接入申請（/onboard）。'],
-    ['8', '在前端用管理員 email + changeme 登入；或用 STAFF_TOKEN。'],
+    ['你現在需要做的事', '照順序完成。做完第 6 步就可以去系統提交申請。'],
+    ['1', '到黃色 SystemConfig 填 TROOP_CODE（旅團號）、TROOP_NAME（旅團名）、ADMIN_EMAIL（你的 email）。'],
+    ['2', '到綠色 Branches 確認支部。enabled = TRUE 表示啟用。'],
+    ['3', '到綠色 Patrols 修改小隊名稱。'],
+    ['4', '到藍色 Members 輸入成員（ymNumber 必須 10 位數字）。'],
+    ['5', '上方選單 ScoutSystem 2.0 → 重新建立管理員帳號。'],
+    ['6', '部署 Web App：Apps Script 右上方「部署」→「網頁應用程式」→ 執行身分：我 → 誰可以存取：任何人 → 部署。複製 /exec 網址。'],
+    ['7', '🔑 Setup 彈窗已顯示 API Key（只顯示一次！）。如果你還沒複製，到選單 → 重新生成 API Key。'],
+    ['8', '到 ScoutSystem 前端 →「申請接入」→ 填入旅團名稱、旅團號、/exec 網址、API Key → 提交。'],
+    ['9', '等平台管理員開通。開通後到首頁選擇你的旅團 → 用 ADMIN_EMAIL + 密碼 changeme 登入。'],
     ['', ''],
     ['權限設定（重要！）', ''],
     ['Google Sheet', '建議設為「知道連結的人都可檢視」。'],
     ['Apps Script', '部署必須設「誰可以存取：任何人」，否則前端讀不到。'],
-    ['Drive 資料夾', '公告 PDF 資料夾必須設「知道連結的人都可檢視」。'],
     ['', ''],
     ['登入方式', ''],
     ['領袖 / 家長 / 管理員', '用 Email + 密碼。'],
     ['成員', '用 YMIS 10位數字 + 密碼（Members 表的 password 欄）。兩者都需要。'],
-    ['STAFF_TOKEN', 'SystemConfig 裡的 STAFF_TOKEN 可用來首次管理員登入。'],
     ['', ''],
+    ['🛡️ 你的資料有多安全？', ''],
+    ['資料存放在哪？', 'Google 伺服器（Google Sheet），不是某台不知名的電腦。'],
+    ['API Key 存放在哪？', 'Vercel 伺服器環境變數，不出現在任何前端代碼。'],
+    ['Sheet 存了甚麼？', '只有 API Key 的 SHA-256 雜湊值（API_KEY_HASH），連管理員也無法還原。'],
+    ['攻擊門檻', '要取得你的資料，攻擊者要麼攻破 Google 伺服器，要麼攻破 Vercel 伺服器。比存在自己家裡的電腦更安全。'],
+    ['⚠️ 注意事項', ''],
+    ['不要分享此 Sheet 連結', 'SystemConfig 有 STAFF_TOKEN 和密碼，等同後台鑰匙。'],
+    ['忘記 API Key？', '選單 → 重新生成 API Key → 通知平台管理員更新。'],
+    ['懷疑洩漏怎辦？', '選單 → 重新生成 API Key，舊 Key 即刻失效。'],
     ['顏色說明', ''],
     ['黃色', '必須人手填的 Config。'],
     ['綠色', '旅團可按實際修改。'],
@@ -299,11 +326,27 @@ function addHelpfulNotes_(ss) {
 }
 
 function noteCell_(sheet, a1, note) { sheet.getRange(a1).setNote(note); }
+
+/** 保護含有敏感資料的工作表，只允許 owner 編輯 */
+function protectSensitiveSheets_(ss) {
+  var me = Session.getActiveUser().getEmail();
+  ['SystemConfig', 'Users'].forEach(function (name) {
+    var sh = ss.getSheetByName(name);
+    if (!sh) return;
+    var prot = sh.protect().setDescription('ScoutSystem：保護敏感設定（API_KEY_HASH / STAFF_TOKEN / 密碼）');
+    var meFound = false;
+    prot.getEditors().forEach(function (e) { if (e.getEmail() === me) meFound = true; });
+    if (!meFound && me) prot.addEditor(me);
+    prot.removeEditors(prot.getEditors().filter(function (e) { return e.getEmail() !== me; }));
+  });
+}
 function hideAdvancedSheets() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var readme = ss.getSheetByName('README_新手必看');
   if (readme) ss.setActiveSheet(readme);
   ADVANCED_SHEETS.forEach(function (name) { var sh = ss.getSheetByName(name); if (sh) sh.hideSheet(); });
+  // ★ 保護敏感工作表（只允許 owner 編輯）
+  protectSensitiveSheets_(ss);
 }
 function showAdvancedSheets() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -316,11 +359,48 @@ function onOpen() {
     .addItem('隱藏進階分頁', 'hideAdvancedSheets')
     .addSeparator()
     .addItem('重新建立管理員帳號', 'reseedAdminMenu')
+    .addItem('重新生成 API Key', 'regenerateApiKeyMenu')
     .addSeparator()
     .addItem('重新格式化 / 上色', 'reformatScoutSystem')
     .addSeparator()
     .addItem('修復 Applications 表', 'fixApplicationsSheet')
     .addItem('修復 EventReplies 表', 'fixEventRepliesSheet').addToUi();
+}
+
+/** 重新生成 API Key（忘記或懷疑洩漏時用） */
+function regenerateApiKeyMenu() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var newKey = regenerateApiKey_(ss);
+  if (newKey) {
+    SpreadsheetApp.getUi().alert(
+      '🔑 新 API Key 已生成',
+      '新 API Key（只顯示一次，請即複製）：\\n\\n' + newKey
+      + '\\n\\n⚠️ 舊 Key 即刻失效！'
+      + '\\n請把新 Key 交給平台管理員更新。'
+      + '\\nSystemConfig 只存雜湊值，無法還原。',
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } else {
+    SpreadsheetApp.getUi().alert('錯誤', '找不到 API_KEY_HASH 設定行。');
+  }
+}
+
+function regenerateApiKey_(ss) {
+  var sh = ss.getSheetByName('SystemConfig');
+  if (!sh) return null;
+  var values = sh.getDataRange().getValues();
+  for (var i = 1; i < values.length; i++) {
+    var key = String(values[i][0] || '');
+    if (key === 'API_KEY_HASH') {
+      var newKey = 'ak_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+      var hash = sha256_(newKey);
+      sh.getRange(i + 1, 2).setValue(hash);
+      sh.getRange(i + 1, 3).setValue('重新生成於 ' + new Date().toISOString() + '；API_KEY 的 SHA-256 雜湊值。');
+      writeAudit_('system', 'regenerateApiKey', 'SystemConfig', 'API_KEY_HASH', 'regenerated');
+      return newKey;
+    }
+  }
+  return null;
 }
 
 function reseedAdminMenu() {
@@ -1029,6 +1109,22 @@ function handleGetUserFeatures_(p) {
 
 function doGet(e) {
   var p = (e && e.parameter) || {};
+
+  // ★★★ API Key 認證：保護所有數據 ★★★
+  // 新版：比對 API_KEY_HASH（SHA-256），明文不存於 Sheet
+  // 舊版兼容：如果只有 API_KEY 明文，也比對
+  var requiredApiKeyHash = getConfigValue_('API_KEY_HASH');
+  var requiredApiKey = getConfigValue_('API_KEY');
+  if (requiredApiKeyHash) {
+    if (sha256_(p.apiKey || '') !== requiredApiKeyHash) {
+      return json({ success: false, error: 'Unauthorized: invalid or missing apiKey' });
+    }
+  } else if (requiredApiKey) {
+    if ((p.apiKey || '') !== requiredApiKey) {
+      return json({ success: false, error: 'Unauthorized: invalid or missing apiKey' });
+    }
+  }
+
   var action = p.action || 'health';
 
   try {

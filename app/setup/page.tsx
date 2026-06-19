@@ -1,11 +1,67 @@
 'use client';
+import Link from 'next/link';
+
 export default function Setup(){
-return <div className="stack"><section className="hero"><span className="badge gold">小白模式</span><h1>旅團接入教學</h1><p>照步驟建立 Sheet、貼上 Apps Script、執行 setup、填 Config、部署 Web App、提交 URL。</p></section>
-<section className="grid-wide"><div className="card"><h3>你需要準備</h3><ul className="muted"><li>Google 帳號</li><li>空白 Google Sheet</li><li>旅團名稱及旅團號，例如 0082</li><li>第一位管理員 Email</li><li>五個支部是否啟用</li></ul></div>
-<div className="card"><h3>一鍵初始化</h3><ol className="muted"><li>開 Google Sheet</li><li>Extensions → Apps Script</li><li>貼上 GS 模板（下方下載或 /downloads）</li><li>Run <code>setupScoutSystem()</code></li><li>到黃色 SystemConfig 填 TROOP_CODE、TROOP_NAME、ADMIN_EMAIL</li><li>到藍色 Members 輸入成員（含 ymNumber、name、branchId）</li><li>Deploy → Web App → Execute as Me, Anyone with Google Account</li><li>把 /exec URL 填入前端首頁旅團連接設定</li><li>用管理員 email + 密碼 changeme 登入測試</li></ol></div></section>
-<section className="card"><h3>登入方式</h3><div className="grid-wide"><div><strong>領袖 / 家長 / 管理員</strong><p className="muted">用 Email + 密碼登入。密碼在 Users 表的 password 欄。初始管理員預設密碼 changeme。</p></div><div><strong>成員</strong><p className="muted">用 YMIS 編號登入（Members 表的 ymNumber）。成員不需要密碼。</p></div></div></section>
-<section className="card"><h3>核心工作表</h3><pre className="code">{`README_新手必看    SystemConfig      Branches        Patrols
-Members           Users             Applications    Events
-EventReplies      LibraryBookmarks  Announcements   RegularMeetings
-CancelledMeetings Notices           Plugins         AuditLogs`}</pre><p className="muted">setup 後只顯示 README、SystemConfig、Branches、Patrols、Members；其餘已隱藏。需要時用 ScoutSystem 2.0 選單顯示。</p></section>
+return <div className="stack">
+<section className="hero">
+  <span className="badge gold">🧩 接入教學</span>
+  <h1>如何接入 ScoutSystem 2.0</h1>
+  <p>6 步完成。最後一步提交申請，等管理員開通即可使用。</p>
+  <Link className="btn gold" href="/onboard">開始接入 →</Link>
+</section>
+
+<section className="grid-wide">
+  <div className="card">
+    <h3>📋 流程總覽</h3>
+    <ol className="muted">
+      <li><strong>建立 Google Sheet</strong> — 開空白 Sheet</li>
+      <li><strong>貼上 Apps Script</strong> — 下載模板，貼到 Apps Script</li>
+      <li><strong>執行 Setup</strong> — 彈窗顯示 API Key，<strong>立即複製！</strong></li>
+      <li><strong>填寫旅團資料</strong> — SystemConfig 填旅團號、名稱、管理員 Email</li>
+      <li><strong>部署 Web App</strong> — 複製 /exec 網址</li>
+      <li><strong>提交申請</strong> — 到「申請接入」頁面填入網址和 API Key</li>
+    </ol>
+    <p className="muted">等管理員開通 → 到首頁選擇旅團 → 用 Email + changeme 登入 → 完成！</p>
+  </div>
+
+  <div className="card">
+    <h3>🔑 關於 API Key</h3>
+    <ul className="muted">
+      <li>Setup 彈窗<strong>只顯示一次</strong>，請即複製</li>
+      <li>Google Sheet 只存雜湊值（API_KEY_HASH），不存明文</li>
+      <li>複製後提交到「申請接入」頁面，管理員存入伺服器環境變數</li>
+      <li>忘記了？Sheet 選單 → 重新生成 API Key</li>
+    </ul>
+  </div>
+</section>
+
+<section className="card">
+  <h3>你需要準備</h3>
+  <div className="grid-wide">
+    <div>
+      <p className="muted">✅ Google 帳號</p>
+      <p className="muted">✅ 旅團名稱及旅團號（如 0082）</p>
+      <p className="muted">✅ 第一位管理員 Email</p>
+    </div>
+    <div>
+      <p className="muted">✅ 空白 Google Sheet</p>
+      <p className="muted">✅ GS 模板（<Link href="/downloads">下載</Link>）</p>
+      <p className="muted">✅ 成員 YMIS 編號（10 位數字）</p>
+    </div>
+  </div>
+</section>
+
+<section className="card">
+  <h3>⚠️ 常見問題</h3>
+  <dl className="muted">
+    <dt>看不到我的旅團？</dt>
+    <dd>代表尚未開通。請先到「申請接入」提交，等管理員確認。</dd>
+    <dt>忘記了 API Key？</dt>
+    <dd>到 Google Sheet 選單 → ScoutSystem 2.0 → 重新生成 API Key，把新 Key 提交給管理員。</dd>
+    <dt>Deploy 後出現 Access Denied？</dt>
+    <dd>確認「誰可以存取」設成了「任何人」，不是「只有我自己」。</dd>
+    <dt>登入後看不到成員？</dt>
+    <dd>確認 Members 表有填 ymNumber（10 位數字），且成員的 active = TRUE。</dd>
+  </dl>
+</section>
 </div>}

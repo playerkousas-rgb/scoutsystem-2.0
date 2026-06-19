@@ -202,7 +202,7 @@ public/downloads/SCOUTSYSTEM_2_SETUP.gs.txt  （下載用副本）
 
 | 表名 | 用途 | 顏色 | 可見性 |
 |---|---|---|---|
-| README_新手必看 | 小白指南 | 藍 | 顯示 |
+| README_新手必看 | 旅團指南 | 藍 | 顯示 |
 | SystemConfig | 旅團設定 | 黃 | 顯示 |
 | Branches | 支部 | 綠 | 顯示 |
 | Patrols | 小隊 / 六 | 綠 | 顯示 |
@@ -220,6 +220,33 @@ public/downloads/SCOUTSYSTEM_2_SETUP.gs.txt  （下載用副本）
 | Notices | 通告 | 灰 | 隱藏 |
 | Plugins | 插件 | 灰 | 隱藏 |
 | AuditLogs | 操作紀錄 | 紅 | 隱藏 |
+
+### 5.2.1 API Key 認證（SHA-256 Hash + Proxy）
+
+所有 API 請求必須帶 `apiKey` 參數，否則回傳 `Unauthorized`。
+
+```
+請求：?action=getDashboard&userId=xxx&apiKey=ak_xxxxxxxx
+沒有 Key：→ {"success":false,"error":"Unauthorized: invalid or missing apiKey"}
+```
+
+**安全架構：**
+
+```
+瀏覽器 → /api/proxy → Vercel Server（從 env vars 讀 API Key）→ Google Apps Script
+                                                              ↓
+                                                    doGet() 用 SHA-256 驗證
+```
+
+- `API_KEY` 在 setup 時自動生成，**明文只顯示一次**（彈窗），之後再看不到
+- SystemConfig 只存 `API_KEY_HASH`（SHA-256 雜湊值），無法還原明文
+- GS `doGet()` 將傳入的 apiKey 做 SHA-256，與 `API_KEY_HASH` 比對
+- 前端不直接呼叫 GS，而是經 `/api/proxy`，API Key 從 Vercel 環境變數讀取
+- 環境變數命名：`TROOP_{旅團號}_APIKEY`（如 `TROOP_0083_APIKEY`）
+- 每個旅團的 API Key 不同，形成數據隔離
+- 手動連接（測試用）：前端帶 URL + API Key，proxy 直接轉發
+- 忘記 Key：Sheet 選單 → 重新生成 API Key（舊 Key 即刻失效）
+- 舊版兼容：如果只有 `API_KEY` 明文（無 `API_KEY_HASH`），也比對明文
 
 ### 5.3 API 端點（34 個 action）
 
@@ -334,7 +361,7 @@ member → 自己 + 自己支部活動/回覆
 ### 5.6 Sheet 讀寫方式
 
 - **header-based**，大小寫不敏感
-- 不怕小白改欄位順序
+- 不怕旅團改欄位順序
 - 如果欄位不存在，`appendRowByHeaders_` 會自動新增
 - `updateCellByName_` 也有自動新增欄位能力
 
@@ -384,7 +411,7 @@ app/
   library/import/       → 圖書館標記引入
   marketplace/          → 元件市場
   connectors/           → 轉駁中心
-  setup/                → 小白接入教學
+  setup/                → 旅團接入教學
   downloads/            → 模板下載
   troop-settings/       → 旅團設定
 ```
@@ -570,7 +597,7 @@ embed = 1（如果 iframe 內嵌）
 | 小隊 | 沒有 | Patrols 表 |
 | 恆常集會 | 沒有 | RegularMeetings + CancelledMeetings |
 | Drive PDF | 沒有 | 有 |
-| 小白 setup | 沒有 | 有（顏色、隱藏、README、notes） |
+| 旅團 setup | 沒有 | 有（顏色、隱藏、README、notes） |
 | STAFF_TOKEN | 沒有 | 有 |
 | Word 通告上傳 | 沒有 | 有 |
 | 通告兩種模式 | 沒有 | informational / troop_participation |

@@ -7,9 +7,6 @@ import { useEffect, useState } from 'react';
 export default function Home(){
   const [selectedKey,setSelectedKey]=useState('');
   const [msg,setMsg]=useState('');
-  const [showManual,setShowManual]=useState(false);
-  const [manualUrl,setManualUrl]=useState('');
-  const [manualName,setManualName]=useState('');
   const troops=activeTroops();
 
   useEffect(()=>{
@@ -29,22 +26,13 @@ export default function Home(){
     setMsg('✅ 已選擇 '+troop.name+'。');
   }
 
-  function connectManual(){
-    setMsg('');
-    if(!manualUrl.includes('/exec')){setMsg('請填正確的 Apps Script /exec URL');return;}
-    localStorage.setItem('scoutsystem2_selected_troop',JSON.stringify({
-      key:'manual',id:manualName||'custom',name:manualName||'自訂旅團',webAppUrl:manualUrl
-    }));
-    setMsg('✅ 已連接。');
-  }
-
   const selected=troops.find(t=>t.key===selectedKey);
 
   return <div className="stack">
     <section className="hero">
       <span className="badge gold">ScoutSystem 2.0</span>
       <h1>{selected?selected.name:'旅團管理系統'}</h1>
-      <p>選擇你的旅團後登入。如果你的旅團尚未接入，請申請接入。</p>
+      <p>選擇你的旅團後登入。如果你的旅團尚未接入，請先申請。</p>
       <div className="row">
         {selected&&<Link className="btn primary" href="/login">登入旅團</Link>}
         <Link className="btn gold" href="/onboard">申請接入</Link>
@@ -59,22 +47,13 @@ export default function Home(){
       :
         <select value={selectedKey} onChange={e=>setSelectedKey(e.target.value)}>
           <option value="">— 請選擇旅團 —</option>
-          {troops.map(t=><option key={t.key} value={t.key}>{t.name}（{t.id}）{t.status==='testing'?' [測試中]':''}</option>)}
+          {troops.map(t=><option key={t.key} value={t.key}>{t.name}（{t.id}）</option>)}
         </select>
       }
       {selected&&<button className="btn primary" onClick={selectTroop}>使用此旅團</button>}
       {msg&&<p className="badge green">{msg}</p>}
-      <p className="muted">💡 旅團後台網址不會公開顯示，保障資料安全。</p>
+      <p className="muted">💡 看不到你的旅團？代表尚未開通，請先<a href="/onboard">申請接入</a>。</p>
     </section>
-
-    <details style={{maxWidth:600}}>
-      <summary className="muted" style={{cursor:'pointer',fontSize:'0.85em'}}>管理員 / 測試用：手動連接 URL</summary>
-      <section className="card stack" style={{marginTop:8}}>
-        <label>旅團名稱<input value={manualName} onChange={e=>setManualName(e.target.value)} placeholder="第82旅"/></label>
-        <label>Apps Script URL<input value={manualUrl} onChange={e=>setManualUrl(e.target.value)} placeholder="https://script.google.com/macros/s/.../exec"/></label>
-        <button className="btn" onClick={connectManual}>連接</button>
-      </section>
-    </details>
 
     <section className="grid">
       <FeatureCard title="接入教學" icon="🧩" text="由建立 Sheet、貼 GS、執行 setup，到提交申請。" href="/setup"/>

@@ -3,22 +3,23 @@ import { AppState } from './store';
 import { Role } from './model';
 import { getSession } from './session';
 
-// ==================== 取得旅團後台 URL ====================
+// ==================== 取得旅團資訊 ====================
 
-export function getWebAppUrl(): string {
+function getTroopKey(): string {
   if (typeof window === 'undefined') return '';
   try {
     const troop = JSON.parse(localStorage.getItem('scoutsystem2_selected_troop') || 'null');
-    return troop?.webAppUrl || '';
+    return troop?.key || '';
   } catch { return ''; }
 }
 
-// ==================== 通用 fetch ====================
+// ==================== 通用 fetch（經 proxy） ====================
 
 function buildUrl(action: string, params?: Record<string, string | undefined>): string {
-  const base = getWebAppUrl();
-  const url = new URL(base);
+  const troopKey = getTroopKey();
+  const url = new URL('/api/proxy', window.location.origin);
   url.searchParams.set('action', action);
+  url.searchParams.set('troopKey', troopKey || 'unknown');
   if (params) {
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
@@ -29,11 +30,11 @@ function buildUrl(action: string, params?: Record<string, string | undefined>): 
 
 async function apiGet<T = any>(action: string, params?: Record<string, string | undefined>): Promise<T> {
   const res = await fetch(buildUrl(action, params), { cache: 'no-store' });
-  const text = await res.text();
-  if (!res.ok || /Access Denied|<!doctype html|<html/i.test(text)) {
-    throw new Error('Apps Script 未公開或未正確回傳 JSON（請確認 Deploy → Anyone）');
+  const data = await res.json();
+  if (!data.success && data.error) {
+    throw new Error(data.error);
   }
-  return JSON.parse(text);
+  return data;
 }
 
 function currentUser(): { userId: string; role: Role } | null {
