@@ -14,11 +14,11 @@ export type ApprovedTroop = {
 
 export const APPROVED_TROOPS: ApprovedTroop[] = [
   {
-    key: 'troop_0083',
-    id: '0083',
-    name: '第83旅（測試）',
+    key: 'troop_0082',
+    id: '0082',
+    name: '第82旅（測試）',
     webAppUrl: 'https://script.google.com/macros/s/AKfycbwATtCXH8t8bV5VOBVY-ocPJR1RgV4iQebJp_oo_NGV7-90xJZ0d4pAVlFf_f51FHYW/exec',
-    // API Key → 設 Vercel env var: TROOP_0083_APIKEY=ak_xxxxxxxx
+    // API Key → 設 Vercel env var: TROOP_0082_APIKEY=ak_xxxxxxxx
     status: 'testing',
     note: '測試旅團',
   },
