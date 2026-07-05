@@ -14,6 +14,7 @@ export default function Page(){
   const [selBranches,setSelBranches]=useState<string[]>(['b3']);
   const [title,setTitle]=useState('');
   const [weekday,setWeekday]=useState('6');
+  const [frequency,setFrequency]=useState('weekly');
   const [startTime,setStartTime]=useState('14:00');
   const [endTime,setEndTime]=useState('16:00');
   const [location,setLocation]=useState('本中心');
@@ -31,6 +32,7 @@ export default function Page(){
   function toggleBranch(id:string,setFn:(fn:(prev:string[])=>string[])=>void){setFn(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id])}
 
   async function toggle(id:string){setErr('');try{const f=await apiToggleRegularMeeting(id);setS(f)}catch(e:any){setErr(e.message)}}
+  async function delRegular(id:string){if(!confirm('確定刪除此集會規則？'))return;setErr('');try{const f=await apiDeleteRegularMeeting(id);setS(f)}catch(e:any){setErr(e.message)}}
 
   async function addRegular(){
     if(!title.trim()){setErr('請填標題');return;}
@@ -38,7 +40,7 @@ export default function Page(){
     setErr('');
     try{
       for(const bid of selBranches){
-        await apiCreateRegularMeeting({branchId:bid,title,weekday,startTime,endTime,location});
+        await apiCreateRegularMeeting({branchId:bid,title,weekday,frequency,startTime,endTime,location});
       }
       const {loadState}=await import('@/lib/store');
       setS(await loadState());
@@ -96,7 +98,10 @@ export default function Page(){
           <td>{r.startTime}-{r.endTime}</td>
           <td>{r.location}</td>
           <td>{r.enabled?<span className="badge green">啟用</span>:<span className="badge red">停用</span>}</td>
-          <td><button className="btn" onClick={()=>toggle(r.id)}>{r.enabled?'停用':'啟用'}</button></td>
+          <td>
+            <button className="btn" onClick={()=>toggle(r.id)}>{r.enabled?'停用':'啟用'}</button>
+            <button className="btn red" onClick={()=>delRegular(r.id)}>🗑️</button>
+          </td>
         </tr>)}</tbody>
       </table>
       {(s.regularMeetings||[]).length===0&&<p className="muted">暫無恆常集會規則。</p>}
@@ -114,6 +119,15 @@ export default function Page(){
       </div>
       <div className="grid">
         <select value={weekday} onChange={e=>setWeekday(e.target.value)}>{weekdays.map((w,i)=><option key={i} value={i}>星期{w}</option>)}</select>
+        <select value={frequency} onChange={e=>setFrequency(e.target.value)}>
+          <option value="weekly">每週一次</option>
+          <option value="biweekly">隔週一次 (雙週)</option>
+          <option value="monthly_1">每月第 1 個週</option>
+          <option value="monthly_2">每月第 2 個週</option>
+          <option value="monthly_3">每月第 3 個週</option>
+          <option value="monthly_4">每月第 4 個週</option>
+          <option value="monthly_last">每月最後一個週</option>
+        </select>
         <input value={startTime} onChange={e=>setStartTime(e.target.value)} placeholder="14:00"/>
         <input value={endTime} onChange={e=>setEndTime(e.target.value)} placeholder="16:00"/>
         <input value={location} onChange={e=>setLocation(e.target.value)} placeholder="本中心"/>

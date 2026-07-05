@@ -88,17 +88,21 @@ function setupScoutSystem() {
   var readme = ss.getSheetByName('README_新手必看');
   if (readme) ss.setActiveSheet(readme);
 
-  SpreadsheetApp.getUi().alert(
-    '2026 Scout System 安全更新完成',
-    '已檢查並補齊新功能所需的欄位，原有資料已完整保留。\n\n'
-    + '本次更新摘要：\n'
-    + '1. 新增了「會議管理 (Meetings)」工作表\n'
-    + '2. 新增了「元件設定 (PluginSettings)」工作表\n'
-    + '3. 補齊了成員 Email 及特別身份等欄位\n\n'
-    + '🔑 你的 API Key（如果之前沒設定過）：\n'
-    + (apiKeyPlain || '（已保留現有設定）'),
-    SpreadsheetApp.getUi().ButtonSet.OK
-  );
+  try {
+    SpreadsheetApp.getUi().alert(
+      '2026 Scout System 安全更新完成',
+      '已檢查並補齊新功能所需的欄位，原有資料已完整保留。\n\n'
+      + '本次更新摘要：\n'
+      + '1. 新增了「會議管理 (Meetings)」工作表\n'
+      + '2. 新增了「元件設定 (PluginSettings)」工作表\n'
+      + '3. 補齊了成員 Email 及特別身份等欄位\n\n'
+      + '🔑 你的 API Key（如果之前沒設定過）：\n'
+      + (apiKeyPlain || '（已保留現有設定）'),
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (e) {
+    console.log('UI alert not available in this context');
+  }
 }
 
 function setup() { setupScoutSystem(); }
@@ -1067,13 +1071,13 @@ function buildDashboard(userId) {
 
 var FEATURE_DEFAULTS = {
   // admin 以上預設全部有
-  'admin': ['branches','members','applications','events','registrations','library_import','notices','users','settings','plugins','audit','calendar'],
-  'troop_super': ['branches','members','applications','events','registrations','library_import','notices','users','settings','plugins','audit','calendar'],
-  'super_admin': ['branches','members','applications','events','registrations','library_import','notices','users','settings','plugins','audit','calendar'],
+  'admin': ['branches','members','applications','events','registrations','meetings','library_import','notices','users','permissions','settings','plugins','audit','calendar'],
+  'troop_super': ['branches','members','applications','events','registrations','meetings','library_import','notices','users','permissions','settings','plugins','audit','calendar'],
+  'super_admin': ['branches','members','applications','events','registrations','meetings','library_import','notices','users','permissions','settings','plugins','audit','calendar'],
   // 團長：自己支部全部
-  'group_leader': ['members','applications','events','registrations','library_import','notices','calendar'],
+  'group_leader': ['members','applications','events','registrations','meetings','library_import','notices','calendar'],
   // 支部領袖：自己支部
-  'branch_leader': ['members','applications','events','registrations','library_import','notices','calendar'],
+  'branch_leader': ['members','applications','events','registrations','meetings','library_import','notices','calendar'],
   // 教練員：預設只有活動和圖書館
   'coach': ['events','registrations','library_import','notices'],
   // 家長和成員不需要管理卡片
@@ -1285,6 +1289,7 @@ function doGet(e) {
       case 'importBookmark': return wrap_(handleImportBookmark_(p), p);
       case 'toggleRegularMeeting': return wrap_(handleToggleRegularMeeting_(p), p);
       case 'createRegularMeeting': return wrap_(handleCreateRegularMeeting_(p), p);
+      case 'deleteRegularMeeting': return wrap_(handleDeleteRegularMeeting_(p), p);
       case 'toggleMeetingCancel': return wrap_(handleToggleMeetingCancel_(p), p);
       case 'updatePdfTags': return wrap_(handleUpdatePdfTags_(p), p);
       case 'grantFeature': return wrap_(handleGrantFeature_(p), p);
@@ -2054,6 +2059,14 @@ function handleCreateRegularMeeting_(p) {
     enabled: true, note: p.note || ''
   });
   writeAudit_(p.operatedBy || 'system', 'createRegularMeeting', 'RegularMeetings', id, p.title || '');
+  return { success: true };
+}
+
+function handleDeleteRegularMeeting_(p) {
+  var idx = findRowIndexById_('RegularMeetings', 'meetingId', p.meetingId);
+  if (idx < 0) return { success: false, error: '找不到集會規則' };
+  getSheet_('RegularMeetings').deleteRow(idx + 1);
+  writeAudit_(p.operatedBy || 'system', 'deleteRegularMeeting', 'RegularMeetings', p.meetingId, '');
   return { success: true };
 }
 

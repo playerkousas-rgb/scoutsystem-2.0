@@ -222,6 +222,9 @@ export function apiToggleMeetingCancel(branchId: string, date: string, reason?: 
   return apiMutate('toggleMeetingCancel', { branchId, date, reason, type });
 }
 
+export function apiDeleteRegularMeeting(meetingId: string) {
+  return apiMutate('deleteRegularMeeting', { meetingId });
+}
 // ==================== 設定 ====================
 
 export function apiSaveConfig(key: string, value: string) {
