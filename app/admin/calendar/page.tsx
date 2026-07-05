@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { AppState, loadState } from '@/lib/store';
-import { apiToggleRegularMeeting, apiCreateRegularMeeting, apiCreateEvent } from '@/lib/api';
+import { apiToggleRegularMeeting, apiCreateRegularMeeting, apiCreateEvent, apiDeleteRegularMeeting } from '@/lib/api';
 import { branches } from '@/lib/model';
 import { getSession } from '@/lib/session';
 const weekdays=['日','一','二','三','四','五','六'];
