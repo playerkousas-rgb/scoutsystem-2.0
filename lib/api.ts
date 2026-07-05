@@ -87,11 +87,21 @@ export async function apiHealth() {
 // ==================== 寫入：通用 mutate ====================
 
 async function apiMutate(action: string, params: Record<string, string | undefined>): Promise<AppState> {
-  const user = currentUser();
-  const full = { ...params, operatedBy: user?.userId || params.operatedBy || 'system' };
-  const data = await apiGet<{ success: boolean; state?: AppState; error?: string }>(action, full);
-  if (!data.success || !data.state) throw new Error(data.error || action + ' 失敗');
-  return data.state;
+  // Prevent double submissions globally
+  if (typeof window !== 'undefined' && (window as any)._scout_submitting) {
+    throw new Error('請稍候，正在處理上一筆請求...');
+  }
+  if (typeof window !== 'undefined') (window as any)._scout_submitting = true;
+
+  try {
+    const user = currentUser();
+    const full = { ...params, operatedBy: user?.userId || params.operatedBy || 'system' };
+    const data = await apiGet<{ success: boolean; state?: AppState; error?: string }>(action, full);
+    if (!data.success || !data.state) throw new Error(data.error || action + ' 失敗');
+    return data.state;
+  } finally {
+    if (typeof window !== 'undefined') (window as any)._scout_submitting = false;
+  }
 }
 
 // ==================== 公開 API（不需登入） ====================
@@ -205,7 +215,7 @@ export function apiUpdateBookmark(p: { bookmarkId: string; title?: string; sourc
 export function apiToggleRegularMeeting(meetingId: string) {
   return apiMutate('toggleRegularMeeting', { meetingId });
 }
-export function apiCreateRegularMeeting(p: { branchId: string; title: string; weekday: string; startTime: string; endTime: string; location: string }) {
+export function apiCreateRegularMeeting(p: { branchId: string; title: string; weekday: string; frequency?: string; startTime: string; endTime: string; location: string }) {
   return apiMutate('createRegularMeeting', p as any);
 }
 export function apiToggleMeetingCancel(branchId: string, date: string, reason?: string, type?: string) {

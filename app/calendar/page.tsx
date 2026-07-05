@@ -11,6 +11,19 @@ function ymd(d:Date){return `${d.getFullYear()}-${String(d.getMonth()+1).padStar
 function monthKey(d:Date){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}
 function addMonths(d:Date,n:number){const x=new Date(d);x.setMonth(x.getMonth()+n);return x}
 
+const BRANCH_COLORS: Record<string, string> = {
+  b1: '#ff9800', // 小童軍 Orange
+  b2: '#ffeb3b', // 幼童軍 Yellow
+  b3: '#4caf50', // 童軍 Green
+  b4: '#f44336', // 深資 Red
+  b5: '#2196f3', // 樂行 Blue
+  troop: '#9c27b0' // 全旅 Purple
+};
+
+function getDotColor(branchId?: string) {
+  return BRANCH_COLORS[branchId || 'troop'] || BRANCH_COLORS.troop;
+}
+
 export default function Calendar(){
   const [s,setS]=useState<AppState|null>(null);
   const [session,setSessionState]=useState<Session|null>(undefined);
@@ -60,8 +73,8 @@ export default function Calendar(){
                   <div key={date} className={`month-cell ${d.getMonth()!==base.getMonth()?'dim':''}`}>
                     <div className="day-num">{d.getDate()}</div>
                     {items.slice(0,4).map((it,idx)=>(
-                      <div key={idx} className={`mini-event ${it.purple?'purple':''}`}>
-                        {it.type==='meeting'?'🔵':'🟣'} {it.title}
+                      <div key={idx} className={`mini-event ${it.purple?'purple':''}`} style={{ borderLeft: `4px solid ${getDotColor(it.type === 'meeting' ? 'branch' : 'troop')}` }}>
+                        {it.title}
                       </div>
                     ))}
                   </div>
@@ -111,17 +124,41 @@ export default function Calendar(){
   const pubEvents=(s.events||[]).filter(e=>e.status==='published');
   const visibleEvents=pubEvents.filter(visibleEvent);
   
-  const calendarItems:{type:string;date:string;title:string;purple:boolean;cancelled?:boolean;event?:any;meeting?:any}[]=[];
-  visibleEvents.forEach(e=>calendarItems.push({type:'event',date:e.date,title:e.title,purple:e.kind==='notice_troop_participation',event:e}));
+  const calendarItems:any[]=[];
+  visibleEvents.forEach(e=>calendarItems.push({type:'event',date:e.date,title:e.title,branchId:e.branchId,purple:e.kind==='notice_troop_participation',event:e}));
   (s.regularMeetings||[]).filter(r=>r.enabled).forEach(r=>{
     for(let i=0;i<90;i++){
       const d=new Date();d.setDate(d.getDate()+i);
       const date=ymd(d);
       if(d.getDay()!==r.weekday)continue;
+      
+      // Frequency logic
+      if (r.frequency === 'biweekly') {
+        // Calculate weeks since a reference date (or just check parity of week number)
+        const firstDayOfYear = new Date(d.getFullYear(), 0, 1);
+        const pastDaysOfYear = (d.getTime() - firstDayOfYear.getTime()) / 86400000;
+        const weekNum = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+        if (weekNum % 2 !== 0) continue; // Skip odd weeks (simple implementation)
+      } else if (r.frequency?.startsWith('monthly_')) {
+        const weekOfMonth = Math.ceil(d.getDate() / 7);
+        const lastDayOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+        const isLastWeek = d.getDate() > lastDayOfMonth - 7;
+        
+        if (r.frequency === 'monthly_1' && weekOfMonth !== 1) continue;
+        if (r.frequency === 'monthly_2' && weekOfMonth !== 2) continue;
+        if (r.frequency === 'monthly_3' && weekOfMonth !== 3) continue;
+        if (r.frequency === 'monthly_4' && weekOfMonth !== 4) continue;
+        if (r.frequency === 'monthly_last' && !isLastWeek) continue;
+      }
+
       let cancelled=false;
-      try{cancelled=isMeetingCancelled(s,r.branchId,date)}catch(e){}
-      if(cancelled&&role==='member')continue;
-      calendarItems.push({type:'meeting',date,title:r.title,purple:false,cancelled,meeting:r});
+      let cancelInfo:any = null;
+      try{
+        cancelInfo = s.cancelledMeetings.find(c => c.branchId === r.branchId && c.date === date);
+        cancelled = !!cancelInfo;
+      }catch(e){}
+      if(cancelled && role==='member') continue;
+      calendarItems.push({type:'meeting', date, title:r.title, branchId:r.branchId, cancelled, cancelType:cancelInfo?.type, meeting:r});
     }
   });
 
@@ -160,8 +197,8 @@ export default function Calendar(){
                 <div key={date} className={`month-cell ${d.getMonth()!==base.getMonth()?'dim':''}`}>
                   <div className="day-num">{d.getDate()}</div>
                   {its.slice(0,4).map((it,idx)=>(
-                    <div key={idx} className={`mini-event ${it.purple?'purple':''} ${it.cancelled?'cancelled':''}`}>
-                      {it.type==='meeting'?'🔵':'🟣'} {it.title}
+                    <div key={idx} className={`mini-event ${it.purple?'purple':''} ${it.cancelled?'cancelled':''}`} style={{ borderLeft: `4px solid ${getDotColor(it.branchId)}` }}>
+                      {it.title}
                       {it.type==='meeting'&&canCancel&& (
                         <div style={{float:'right'}}>
                           {it.cancelled ? (
@@ -185,9 +222,9 @@ export default function Calendar(){
         <section className="card stack">
           <h2>清單</h2>
           {calendarItems.sort((a,b)=>a.date.localeCompare(b.date)).slice(0,60).map((it,idx)=>(
-            <div key={idx} className={`event-line ${it.purple?'event-purple':'event-blue'}`}>
+            <div key={idx} className={`event-line`} style={{ borderLeft: `8px solid ${getDotColor(it.branchId)}` }}>
               <div>
-                <strong>{it.cancelled? (it.meeting?.type==='recess'?'休會：':'已取消：') : ''}{it.type==='meeting'?'🔵':'🟣'} {it.title}</strong>
+                <strong>{it.cancelled? (it.meeting?.type==='recess'?'休會：':'已取消：') : ''} {it.title}</strong>
                 <div className="muted">{it.date}{it.type==='event'?` · ${it.event?.location||'待定'} · ${it.event?.source||''}`:` · ${it.meeting?.startTime||''}-${it.meeting?.endTime||''} · ${it.meeting?.location||''}`}</div>
               </div>
               <div className="row">

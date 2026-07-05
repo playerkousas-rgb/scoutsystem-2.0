@@ -38,9 +38,16 @@ export default function Home(){
 
   return <div className="stack">
     {reminders.length > 0 && (
-      <div style={{ background: '#fff3cd', color: '#856404', padding: '10px', borderRadius: '8px', marginBottom: '10px', fontSize: '0.9rem' }}>
-        <strong>🔔 重要通知：</strong>
-        {reminders.map(r => <span key={r.id} style={{ marginLeft: '10px' }}>{r.date} {r.title} ({r.type==='agenda'?'議程':'紀錄'})</span>)}
+      <div style={{ background: '#fff3cd', color: '#856404', padding: '12px 15px', borderRadius: '8px', marginBottom: '15px', fontSize: '1rem', border: '1px solid #ffeeba' }}>
+        <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>🔔 重要通知：</div>
+        <div className="stack" style={{ gap: '8px' }}>
+          {reminders.map(r => (
+            <div key={r.id} className="row" style={{ justifyContent: 'space-between', background: 'rgba(255,255,255,0.5)', padding: '8px', borderRadius: '4px' }}>
+              <span>{r.date} {r.title} ({r.type==='agenda'?'議程':'紀錄'})</span>
+              {r.url && <a href={r.url} target="_blank" className="btn primary" style={{ fontSize: '0.8rem', padding: '4px 10px' }}>查看文件</a>}
+            </div>
+          ))}
+        </div>
       </div>
     )}
     <section className="hero">

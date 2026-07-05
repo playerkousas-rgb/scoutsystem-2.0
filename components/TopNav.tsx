@@ -15,7 +15,10 @@ export default function TopNav(){
   // 已選旅團但未登入 → 可看到行事曆(全)和活動
   const hasTroop = !!troop;
   return <header className="topbar"><div className="topbar-inner">
-    <Link className="brand" href="/">ScoutSystem</Link>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <Link className="brand" href="/">ScoutSystem</Link>
+      {session && <span className="badge" style={{ fontSize: '0.6rem', padding: '1px 4px', marginTop: '-4px', background: '#eee', color: '#666' }}>{session.name} ({isAdmin(session.role) ? '管理員' : session.role})</span>}
+    </div>
     <nav className="nav">
       {/* 已登入帳號 */}
       {session && <><Link className="btn" href="/calendar">行事曆</Link><Link className="btn" href="/activities">活動</Link><Link className="btn" href="/notices">公告</Link><Link className="btn" href="/library">圖書館</Link></>}

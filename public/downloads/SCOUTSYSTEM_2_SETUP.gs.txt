@@ -210,9 +210,9 @@ function getInitialSheets_() {
       ['announcementId', 'fileId', 'fileName', 'fileUrl', 'fileSize', 'branchTags', 'audienceTags', 'status', 'updatedAt', 'note']
     ],
     RegularMeetings: [
-      ['meetingId', 'branchId', 'title', 'weekday', 'startTime', 'endTime', 'location', 'enabled', 'note'],
-      ['rm1', 'b3', '童軍恆常集會', 6, '14:00', '16:00', '本中心', true, '星期六恆常集會'],
-      ['rm2', 'b2', '幼童軍恆常集會', 6, '14:00', '16:00', '本中心', true, '星期六恆常集會']
+      ['meetingId', 'branchId', 'title', 'weekday', 'frequency', 'startTime', 'endTime', 'location', 'enabled', 'note'],
+      ['rm1', 'b3', '童軍恆常集會', 6, 'weekly', '14:00', '16:00', '本中心', true, '星期六恆常集會'],
+      ['rm2', 'b2', '幼童軍恆常集會', 6, 'weekly', '14:00', '16:00', '本中心', true, '星期六恆常集會']
     ],
     CancelledMeetings: [
       ['cancelId', 'branchId', 'date', 'type', 'reason', 'markedBy', 'markedAt']
@@ -587,7 +587,13 @@ function fmtTime_(v) {
     return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
   }
   var s = String(v);
-  if (s.indexOf('1899') === 0 || s.indexOf('1900') === 0) {
+  // Google Sheets might return "Sat Dec 30 1899 17:00:00 GMT+0800 (HKT)" or "17:00:00"
+  if (s.indexOf(':') >= 0 && s.length <= 8) {
+    // Already HH:mm:ss or HH:mm
+    var parts = s.split(':');
+    return parts[0].padStart(2, '0') + ':' + parts[1].padStart(2, '0');
+  }
+  if (s.indexOf('1899') >= 0 || s.indexOf('1900') >= 0 || s.indexOf('GMT') >= 0) {
     var d = new Date(s);
     if (!isNaN(d.getTime())) {
       var h2 = d.getHours();
@@ -738,6 +744,7 @@ function mapRegularMeetings_() {
     return {
       id: getField_(r, 'meetingId'), branchId: getField_(r, 'branchId'),
       title: getField_(r, 'title'), weekday: Number(getField_(r, 'weekday')) || 0,
+      frequency: getField_(r, 'frequency') || 'weekly',
       startTime: fmtTime_(getField_(r, 'startTime')), endTime: fmtTime_(getField_(r, 'endTime')),
       location: getField_(r, 'location') || '', enabled: parseBool_(getField_(r, 'enabled'))
     };
@@ -1313,6 +1320,10 @@ function wrapPublic_(result) {
 /** 登入寫入：成功後回傳該使用者的 dashboard */
 function wrap_(result, p) {
   if (result && result.success === false) return json(result);
+  
+  // Use Utilities.sleep(1000) or similar to simulate/prevent race? 
+  // Better to handle on client.
+  
   return json({ success: true, state: buildDashboard((p && p.operatedBy) || (p && p.userId) || '') });
 }
 
@@ -2037,7 +2048,8 @@ function handleCreateRegularMeeting_(p) {
   var id = uid_('rm');
   appendRowByHeaders_('RegularMeetings', {
     meetingId: id, branchId: p.branchId || '', title: p.title || '',
-    weekday: Number(p.weekday) || 6, startTime: p.startTime || '14:00',
+    weekday: Number(p.weekday) || 6, frequency: p.frequency || 'weekly',
+    startTime: p.startTime || '14:00',
     endTime: p.endTime || '16:00', location: p.location || '本中心',
     enabled: true, note: p.note || ''
   });
