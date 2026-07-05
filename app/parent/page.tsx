@@ -23,10 +23,21 @@ export default function Parent(){
 
   return (
     <div className="stack">
+      <section className="card stack" style={{ background: 'linear-gradient(135deg, #7b1fa2 0%, #9c27b0 100%)', color: '#fff' }}>
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+            <div>
+              <h2 style={{ margin: 0 }}>👤 {parent.name}</h2>
+              <p style={{ opacity: 0.9, margin: 0 }}>身份：家長</p>
+            </div>
+            <div className="row">
+              <Link href="/profile" className="btn" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }}>個人設定 / 改密碼</Link>
+            </div>
+        </div>
+      </section>
+
       <section className="hero">
         <span className="badge gold">家長控制台</span>
-        <h1>子女活動管理</h1>
-        <p>已登入：{parent.name} (家長)</p>
+        <p>管理子女活動報名與資訊。</p>
       </section>
       
       {err&&<p className="badge red">{err}</p>}

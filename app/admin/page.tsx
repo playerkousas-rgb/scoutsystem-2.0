@@ -28,26 +28,27 @@ export default function Admin(){
   const [err,setErr]=useState('');
   useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message))},[]);
   const stats=s?computeStats(s):{users:0,pending:0,activities:0,notices:0};
-  const session = s?.users.find(u => u.id === s?.users[0]?.id); // Placeholder for current user in state
+  const session = s?.users.find(u => u.id === s?.users[0]?.id); 
   let features = s?.userFeatures || [];
 
-  // 深度修正：如果管理員沒看到卡片，可能是 GS 未更新。
-  // 為確保超級管理員始終能看到核心功能，我們在此做一個前端補底
   if (features.length === 0 && (s?.users[0]?.role === 'admin' || s?.users[0]?.role === 'super_admin' || s?.users[0]?.role === 'troop_super')) {
     features = Object.keys(FEATURE_DEFS);
   }
 
-  // 動態渲染：根據 userFeatures 顯示卡片
-  function renderFeatureCards(){
-    return features.map(f=>{
-      const def=FEATURE_DEFS[f];
-      if(!def) return null;
-      return <FeatureCard key={f} title={def.title} icon={def.icon} text={def.text} href={def.href}/>;
-    }).filter(Boolean);
-  }
-
   return <Auth roles={['super_admin','troop_super','admin','group_leader','branch_leader','coach']}><div className="stack">
-    <section className="hero"><span className="badge gold">控制台</span><h1>控制台</h1><p>功能卡片根據你的權限動態顯示。上級可授權下級額外功能。</p></section>
+    <section className="card stack" style={{ background: 'linear-gradient(135deg, #f9ab00 0%, #ffc107 100%)', color: '#fff' }}>
+       <div className="row" style={{ justifyContent: 'space-between' }}>
+          <div>
+            <h2 style={{ margin: 0 }}>👤 {s?.users[0]?.name || '管理員'}</h2>
+            <p style={{ opacity: 0.9, margin: 0 }}>角色：{ROLE_LABEL[s?.users[0]?.role || 'admin']}</p>
+          </div>
+          <div className="row">
+            <Link href="/profile" className="btn" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }}>個人設定 / 改密碼</Link>
+          </div>
+       </div>
+    </section>
+
+    <section className="hero"><span className="badge gold">管理控制台</span><p>功能卡片根據你的權限動態顯示。上級可授權下級額外功能。</p></section>
     {err&&<p className="badge red">{err}</p>}
     <section className="grid">
       <a href="/admin/users"><SummaryCard label="用戶" value={stats.users} desc="總登記人數"/></a>
