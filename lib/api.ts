@@ -208,8 +208,8 @@ export function apiToggleRegularMeeting(meetingId: string) {
 export function apiCreateRegularMeeting(p: { branchId: string; title: string; weekday: string; startTime: string; endTime: string; location: string }) {
   return apiMutate('createRegularMeeting', p as any);
 }
-export function apiToggleMeetingCancel(branchId: string, date: string, reason?: string) {
-  return apiMutate('toggleMeetingCancel', { branchId, date, reason });
+export function apiToggleMeetingCancel(branchId: string, date: string, reason?: string, type?: string) {
+  return apiMutate('toggleMeetingCancel', { branchId, date, reason, type });
 }
 
 // ==================== 設定 ====================

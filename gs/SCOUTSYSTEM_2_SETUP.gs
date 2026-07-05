@@ -46,15 +46,42 @@ function setupScoutSystem() {
   var sheets = getInitialSheets_();
   Object.keys(sheets).forEach(function (name) {
     var sh = ss.getSheetByName(name) || ss.insertSheet(name);
-    sh.showSheet(); sh.clear();
-    sh.getRange(1, 1, sheets[name].length, sheets[name][0].length).setValues(sheets[name]);
+    sh.showSheet();
+    
+    var data = sh.getDataRange().getValues();
+    var existingHeaders = data[0].map(function(h) { return String(h).trim().toLowerCase(); });
+    var targetHeaders = sheets[name][0];
+    
+    if (data.length <= 1 && data[0][0] === "") {
+      // 完全空的表：直接寫入初始資料（含標題和範例）
+      sh.getRange(1, 1, sheets[name].length, sheets[name][0].length).setValues(sheets[name]);
+    } else {
+      // 已有資料：只檢查並補齊缺失的欄位標題
+      targetHeaders.forEach(function(h, idx) {
+        if (existingHeaders.indexOf(h.toLowerCase()) < 0) {
+          var lastCol = sh.getLastColumn();
+          sh.getRange(1, lastCol + 1).setValue(h);
+          existingHeaders.push(h.toLowerCase());
+        }
+      });
+      
+      // 特殊處理 SystemConfig：補齊缺失的 Key，但不覆蓋現有 Value
+      if (name === 'SystemConfig') {
+        var existingKeys = data.map(function(r) { return String(r[0]); });
+        sheets[name].slice(1).forEach(function(row) {
+          if (existingKeys.indexOf(row[0]) < 0) {
+            sh.appendRow(row);
+          }
+        });
+      }
+    }
     sh.setFrozenRows(1);
   });
 
   setupReadmeSheet_(ss);
   formatScoutSystemSheets_(ss);
   addHelpfulNotes_(ss);
-  seedInitialAdmin_(ss);
+  // seedInitialAdmin_(ss); // 註解掉，避免重複建立導致密碼被重設
   var apiKeyPlain = generateStaffToken_(ss);
   hideAdvancedSheets();
 
@@ -62,22 +89,14 @@ function setupScoutSystem() {
   if (readme) ss.setActiveSheet(readme);
 
   SpreadsheetApp.getUi().alert(
-    '2026 Scout System 初始化完成',
-    '已建立工作表、標記顏色、加上欄位說明，並隱藏進階後台分頁。\n\n'
-    + '接下來：\n'
-    + '1. 到黃色 SystemConfig 填 TROOP_CODE、TROOP_NAME、ADMIN_EMAIL\n'
-    + '2. 到 Members 輸入成員\n'
-    + '3. Deploy 為 Web App（執行身分：我 → 誰可以存取：任何人）\n'
-    + '4. 複製 /exec 網址\n'
-    + '5. 到系統前端「申請接入」頁面，填入 /exec 網址和下面的 API Key\n'
-    + '6. 等平台管理員開通 → 選擇旅團 → 用 email + changeme 登入\n\n'
-    + '🔑 你的 API Key（只顯示一次，請即複製）：\n'
-    + '───────────────────────\n'
-    + (apiKeyPlain || '（已在 SystemConfig 設定）') + '\n'
-    + '───────────────────────\n\n'
-    + '⚠️ 複製時只取上下橫線之間的文字，不要包含空格或換行！\n'
-    + 'SystemConfig 只儲存此 Key 的雜湊值，無法還原。\n'
-    + '忘記了？到選單 → 重新生成 API Key。',
+    '2026 Scout System 安全更新完成',
+    '已檢查並補齊新功能所需的欄位，原有資料已完整保留。\n\n'
+    + '本次更新摘要：\n'
+    + '1. 新增了「會議管理 (Meetings)」工作表\n'
+    + '2. 新增了「元件設定 (PluginSettings)」工作表\n'
+    + '3. 補齊了成員 Email 及特別身份等欄位\n\n'
+    + '🔑 你的 API Key（如果之前沒設定過）：\n'
+    + (apiKeyPlain || '（已保留現有設定）'),
     SpreadsheetApp.getUi().ButtonSet.OK
   );
 }
