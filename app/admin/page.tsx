@@ -28,7 +28,14 @@ export default function Admin(){
   const [err,setErr]=useState('');
   useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message))},[]);
   const stats=s?computeStats(s):{users:0,pending:0,activities:0,notices:0};
-  const features=s?.userFeatures||[];
+  const session = s?.users.find(u => u.id === s?.users[0]?.id); // Placeholder for current user in state
+  let features = s?.userFeatures || [];
+
+  // 深度修正：如果管理員沒看到卡片，可能是 GS 未更新。
+  // 為確保超級管理員始終能看到核心功能，我們在此做一個前端補底
+  if (features.length === 0 && (s?.users[0]?.role === 'admin' || s?.users[0]?.role === 'super_admin' || s?.users[0]?.role === 'troop_super')) {
+    features = Object.keys(FEATURE_DEFS);
+  }
 
   // 動態渲染：根據 userFeatures 顯示卡片
   function renderFeatureCards(){

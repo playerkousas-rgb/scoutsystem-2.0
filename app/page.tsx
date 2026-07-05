@@ -38,13 +38,13 @@ export default function Home(){
 
   return <div className="stack">
     {reminders.length > 0 && (
-      <div style={{ background: '#fff3cd', color: '#856404', padding: '12px 15px', borderRadius: '8px', marginBottom: '15px', fontSize: '1rem', border: '1px solid #ffeeba' }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>🔔 重要通知：</div>
-        <div className="stack" style={{ gap: '8px' }}>
+      <div className="card reminder-bar" style={{ background: '#fff3cd', color: '#856404', padding: '12px 15px', borderRadius: '8px', marginBottom: '15px', border: '1px solid #ffeeba' }}>
+        <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '1.1rem' }}>🔔 重要通知：</div>
+        <div className="stack" style={{ gap: '10px' }}>
           {reminders.map(r => (
-            <div key={r.id} className="row" style={{ justifyContent: 'space-between', background: 'rgba(255,255,255,0.5)', padding: '8px', borderRadius: '4px' }}>
-              <span>{r.date} {r.title} ({r.type==='agenda'?'議程':'紀錄'})</span>
-              {r.url && <a href={r.url} target="_blank" className="btn primary" style={{ fontSize: '0.8rem', padding: '4px 10px' }}>查看文件</a>}
+            <div key={r.id} className="row reminder-item" style={{ justifyContent: 'space-between', background: 'rgba(255,255,255,0.6)', padding: '10px', borderRadius: '6px', flexWrap: 'wrap', gap: '10px' }}>
+              <span style={{ fontSize: '1rem', fontWeight: 500 }}>{r.date} {r.title} ({r.type==='agenda'?'議程':'紀錄'})</span>
+              {r.url && <a href={r.url} target="_blank" className="btn primary" style={{ padding: '6px 15px', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>查看文件</a>}
             </div>
           ))}
         </div>

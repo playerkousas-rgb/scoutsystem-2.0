@@ -15,9 +15,13 @@ export default function TopNav(){
   // 已選旅團但未登入 → 可看到行事曆(全)和活動
   const hasTroop = !!troop;
   return <header className="topbar"><div className="topbar-inner">
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minWidth: '120px' }}>
       <Link className="brand" href="/">ScoutSystem</Link>
-      {session && <span className="badge" style={{ fontSize: '0.6rem', padding: '1px 4px', marginTop: '-4px', background: '#eee', color: '#666' }}>{session.name} ({isAdmin(session.role) ? '管理員' : session.role})</span>}
+      {session && (
+        <div style={{ fontSize: '0.7rem', color: '#666', background: 'rgba(0,0,0,0.05)', padding: '2px 6px', borderRadius: '4px', width: 'fit-content' }}>
+          👤 {session.name} <span style={{ opacity: 0.7 }}>({isAdmin(session.role) ? '管理員' : session.role})</span>
+        </div>
+      )}
     </div>
     <nav className="nav">
       {/* 已登入帳號 */}
