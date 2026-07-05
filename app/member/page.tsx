@@ -5,6 +5,7 @@ import { apiSetReply } from '@/lib/api';
 import { getSession } from '@/lib/session';
 import Collapsible from '@/components/Collapsible';
 import PluginIframeCard from '@/components/PluginCard';
+import Link from 'next/link';
 
 export default function Member(){
   const [s,setS]=useState<AppState|null>(null);const [err,setErr]=useState('');
