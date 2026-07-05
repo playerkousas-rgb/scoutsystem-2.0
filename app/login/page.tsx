@@ -86,8 +86,31 @@ export default function Login() {
         )}
 
         <button className="btn primary" disabled={loading} onClick={submit}>{loading ? '登入中...' : '登入'}</button>
-        {msg && <p className="badge red">{msg}</p>}
+        {msg && <p className={`badge ${msg.startsWith('✅') ? 'green' : 'red'}`}>{msg}</p>}
+        
+        <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+          <button className="btn" style={{ fontSize: '0.8rem', opacity: 0.7 }} onClick={forgotPw}>忘記密碼？</button>
+        </div>
       </section>
     </div>
   );
+
+  async function forgotPw() {
+    if (!identifier.trim()) { setMsg('請先輸入 Email 或 YMIS 編號，再點擊忘記密碼。'); return; }
+    if (!confirm(`將重設密碼並發送到與 ${identifier} 關聯的 Email，確定嗎？`)) return;
+    setLoading(true);
+    try {
+      const { apiForgotPassword } = await import('@/lib/api');
+      const res = await apiForgotPassword({ identifier: identifier.trim(), loginType: tab === 'member' ? 'member' : 'account' });
+      if (res.success) {
+        setMsg('✅ ' + res.message);
+      } else {
+        setMsg('❌ ' + res.error);
+      }
+    } catch (e: any) {
+      setMsg('❌ ' + (e.message || String(e)));
+    } finally {
+      setLoading(false);
+    }
+  }
 }

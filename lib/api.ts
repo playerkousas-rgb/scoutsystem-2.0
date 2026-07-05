@@ -66,6 +66,19 @@ export async function apiLogin(params: {
   });
 }
 
+/** 忘記密碼 */
+export async function apiForgotPassword(params: {
+  identifier: string; loginType: 'account' | 'member';
+}) {
+  const res = await fetch(buildUrl('forgotPassword', params as any), { cache: 'no-store' });
+  return res.json();
+}
+
+/** 更改密碼 */
+export async function apiUpdatePassword(newPassword: string) {
+  return apiMutate('updatePassword', { newPassword });
+}
+
 /** 測試後台連線 */
 export async function apiHealth() {
   return apiGet('health');
@@ -105,13 +118,13 @@ export function apiUpdateMember(p: Record<string, string>) {
 
 // ==================== 活動 / 報名 ====================
 
-export function apiCreateEvent(p: { title: string; scope?: string; branchId?: string; date?: string; location?: string; kind?: string; status?: string; source?: string; fee?: string; targetMemberIds?: string }) {
+export function apiCreateEvent(p: { title: string; scope?: string; branchId?: string; date?: string; location?: string; kind?: string; status?: string; source?: string; fee?: string; paymentUrl?: string; dutyPatrol?: string; targetMemberIds?: string }) {
   return apiMutate('createEvent', p as any);
 }
 export function apiPublishEvent(eventId: string) {
   return apiMutate('publishEvent', { eventId });
 }
-export function apiUpdateEvent(p: { eventId: string; title?: string; date?: string; location?: string; scope?: string; branchId?: string; fee?: string; status?: string }) {
+export function apiUpdateEvent(p: { eventId: string; title?: string; date?: string; location?: string; scope?: string; branchId?: string; fee?: string; paymentUrl?: string; dutyPatrol?: string; status?: string }) {
   return apiMutate('updateEvent', p as any);
 }
 export function apiDeleteEvent(eventId: string) {
@@ -176,14 +189,14 @@ export function apiTogglePatrol(patrolId: string) {
 
 // ==================== 圖書館標記 ====================
 
-export function apiImportBookmark(p: { title: string; mode: string; source?: string; officialDeadline?: string; internalDeadline?: string; branchTags?: string; audienceTags?: string; fee?: string; eligibility?: string; activityType?: string; note?: string; date?: string }) {
+export function apiImportBookmark(p: { title: string; mode: string; source?: string; officialDeadline?: string; internalDeadline?: string; branchTags?: string; audienceTags?: string; fee?: string; paymentUrl?: string; eligibility?: string; activityType?: string; note?: string; date?: string }) {
   return apiMutate('importBookmark', p as any);
 }
 
 export function apiDeleteBookmark(bookmarkId: string) {
   return apiMutate('deleteBookmark', { bookmarkId });
 }
-export function apiUpdateBookmark(p: { bookmarkId: string; title?: string; source?: string; officialDeadline?: string; internalDeadline?: string; branchTags?: string; audienceTags?: string; fee?: string; eligibility?: string; activityType?: string; mode?: string; note?: string; targetText?: string; status?: string }) {
+export function apiUpdateBookmark(p: { bookmarkId: string; title?: string; source?: string; officialDeadline?: string; internalDeadline?: string; branchTags?: string; audienceTags?: string; fee?: string; paymentUrl?: string; eligibility?: string; activityType?: string; mode?: string; note?: string; targetText?: string; status?: string }) {
   return apiMutate('updateBookmark', p as any);
 }
 
@@ -203,6 +216,24 @@ export function apiToggleMeetingCancel(branchId: string, date: string, reason?: 
 
 export function apiSaveConfig(key: string, value: string) {
   return apiMutate('saveConfig', { key, value });
+}
+
+// ==================== Meetings ====================
+
+export function apiCreateMeeting(p: { title: string; type: 'agenda' | 'minutes'; date: string; startTime?: string; endTime?: string; location?: string; targetRoles?: string; branchId?: string; url?: string }) {
+  return apiMutate('createMeeting', p as any);
+}
+export function apiUpdateMeeting(p: any) {
+  return apiMutate('updateMeeting', p);
+}
+export function apiDeleteMeeting(meetingId: string) {
+  return apiMutate('deleteMeeting', { meetingId });
+}
+export function apiPublishMeeting(meetingId: string) {
+  return apiMutate('publishMeeting', { meetingId });
+}
+export function apiUpdateUserPermissions(targetUserId: string, features: string[]) {
+  return apiMutate('updateUserPermissions', { targetUserId, features: features.join(',') });
 }
 
 // ==================== Drive ====================

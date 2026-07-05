@@ -1,4 +1,4 @@
-# ScoutSystem 2.0 完整邏輯文件
+# 2026 Scout System 完整邏輯文件
 
 > **最後更新：2026-06-16**
 > **用途：系統架構、資料關係、API 合約、前後端對接的單一事實來源。**
@@ -8,7 +8,7 @@
 
 ## 1. 系統定位
 
-ScoutSystem 2.0 是一個**多旅團共用前端、各旅團獨立後台**的旅團管理系統。
+2026 Scout System 是一個**多旅團共用前端、各旅團獨立後台**的旅團管理系統。
 
 - 前端（Next.js）部署在 Vercel，所有旅團共用一份
 - 後台（Google Sheet + Apps Script）各旅團獨立一份
@@ -29,9 +29,16 @@ ScoutSystem 2.0 是一個**多旅團共用前端、各旅團獨立後台**的旅
 | 支部領袖 | `branch_leader` | 管理所屬支部 | email + password |
 | 教練員 | `coach` | 可標記圖書館、看活動；無審核權限 | email + password |
 | 家長 | `parent` | 代子女回覆活動 | email + password |
-| 成員 | `member` | 看自己活動，回覆 | YMIS 10位數字（不需密碼） |
+| 成員 | `member` | 看自己活動，回覆 | YMIS 10位數字 + 密碼（預設為 YMIS 或 changeme） |
 
 **重要**：sheep / 0728 不等於超管，是技術管理人員的測試帳號，權限等同最高但身份上不是旅團管理層。
+
+### 2.1.1 密碼管理
+
+- **更改密碼**：登入後可在「個人資料」頁面自行更改。
+- **忘記密碼**：登入頁面提供「忘記密碼」功能，系統會生成隨機新密碼並發送到帳號登記的 Email。
+  - 成員若未登記 Email，會嘗試發送到家長的 Email。
+  - 若兩者皆無，需聯絡領袖手動重設。
 
 ### 2.2 家長 → 子女連結（雙向）
 
@@ -84,6 +91,8 @@ Users.childMemberIds = ['m1','m2'] → 這個家長的子女（前端從 Members
 - 會加入行事曆
 - 家長需要回覆 ✅ 參加 / ❌ 不參加
 - 進入報名管理
+- **收款連結**：領袖可填寫 FPS/PayPal 等連結，家長可直接點擊付款。
+- **值日小隊**：可標記由哪個小隊值日（如 TIGER），該小隊成員會看到專屬提示。
 
 **建立方式**：
 1. 管理員在 `/admin/events` 手動新增
@@ -98,11 +107,9 @@ Users.childMemberIds = ['m1','m2'] → 這個家長的子女（前端從 Members
 - `activity` → 普通活動（藍色）
 - `notice_troop_participation` → 圖書館轉入（紫色）
 
-**targetMemberIds 規則**：
-- 全部成員平等，不排除任何人
-- 某些成員不適合 → 他自己不報即可
-- 他報了領袖可以在報名管理刪除
-- 所有人權利平等
+**關鍵欄位**：
+- `paymentUrl`：收款跳轉連結。
+- `dutyPatrol`：值日小隊名稱。
 
 ### 3.2 通告（LibraryBookmark / 圖書館引入）
 
@@ -115,6 +122,8 @@ Users.childMemberIds = ['m1','m2'] → 這個家長的子女（前端從 Members
 **引入方式**：
 1. `/library/import` 手動輸入
 2. Word 通告上傳 `/notices/upload`
+
+**新增功能**：支持 `paymentUrl` 收款連結。
 
 ### 3.3 公告（Announcement PDF）
 
@@ -256,6 +265,7 @@ public/downloads/SCOUTSYSTEM_2_SETUP.gs.txt  （下載用副本）
 |---|---|---|
 | `health` | — | 連線測試 |
 | `login` | identifier, password, loginType | 登入 |
+| `forgotPassword` | identifier, loginType | 忘記密碼（Email 發送新密碼） |
 | `applyJoin` | type, name, email, role, branchId, ymNumbers | 申請帳號 |
 | `getPublicBootstrap` | — | 公開 config + branches |
 | `getSystemStatus` | — | 系統鎖狀態 |
@@ -270,6 +280,14 @@ public/downloads/SCOUTSYSTEM_2_SETUP.gs.txt  （下載用副本）
 | `getApplications` | userId | 申請列表（按角色過濾） |
 | `getEventRegistrationSummary` | eventId, userId | 報名摘要（含小隊統計） |
 
+#### 寫入：帳號 / 密碼
+
+| action | 參數 | 用途 |
+|---|---|---|
+| `updatePassword` | newPassword | 更改當前登入用戶密碼 |
+| `createUser` | name, email, password, role, branchId | 新增帳號 |
+| `toggleUser` | userId | 啟用/停用 |
+
 #### 寫入：成員
 
 | action | 參數 | 用途 |
@@ -283,7 +301,7 @@ public/downloads/SCOUTSYSTEM_2_SETUP.gs.txt  （下載用副本）
 
 | action | 參數 | 用途 |
 |---|---|---|
-| `createEvent` | title, scope, branchId, date, location, fee, ... | 新增活動 |
+| `createEvent` | title, scope, branchId, date, location, fee, paymentUrl, dutyPatrol, ... | 新增活動 |
 | `updateEvent` | eventId, + 各欄位 | 編輯活動 |
 | `publishEvent` | eventId | 發布活動 |
 | `deleteEvent` | eventId | 刪除活動 |
@@ -297,13 +315,6 @@ public/downloads/SCOUTSYSTEM_2_SETUP.gs.txt  （下載用副本）
 |---|---|---|
 | `decideApplication` | applicationId, status | 批核/拒絕（含建User/Member/家長連結） |
 
-#### 寫入：使用者
-
-| action | 參數 | 用途 |
-|---|---|---|
-| `createUser` | name, email, password, role, branchId | 新增帳號 |
-| `toggleUser` | userId | 啟用/停用 |
-
 #### 寫入：小隊
 
 | action | 參數 | 用途 |
@@ -315,7 +326,7 @@ public/downloads/SCOUTSYSTEM_2_SETUP.gs.txt  （下載用副本）
 
 | action | 參數 | 用途 |
 |---|---|---|
-| `importBookmark` | title, mode, source, deadlines, fee | 引入通告（旅團參與會建Event） |
+| `importBookmark` | title, mode, source, deadlines, fee, paymentUrl | 引入通告（旅團參與會建Event） |
 | `updateBookmark` | bookmarkId, + 各欄位 | 編輯通告 |
 | `deleteBookmark` | bookmarkId | 刪除通告 |
 

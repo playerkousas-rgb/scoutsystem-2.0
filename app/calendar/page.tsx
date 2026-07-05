@@ -82,7 +82,10 @@ export default function Calendar(){
   const parent=role==='parent'?s.users.find(u=>u.id===session.userId):null;
   const children=parent?(s.members||[]).filter(m=>(parent.childMemberIds||[]).includes(m.id)||m.parentUserId===parent.id):[];
 
-  function cancelDay(branchId:string,date:string){setErr('');apiToggleMeetingCancel(branchId,date,'領袖標記不用集會').then(f=>setS(f)).catch(e=>setErr(e.message))}
+  function cancelDay(branchId:string,date:string,type:'cancelled'|'recess'='cancelled'){
+    setErr('');
+    apiToggleMeetingCancel(branchId,date,'領袖標記',type).then(f=>setS(f)).catch(e=>setErr(e.message))
+  }
 
   function visibleEvent(e:any){
     if(role==='member'){const m=(s.members||[]).find(x=>x.id===session.memberId);return !!m&&e.targetMemberIds.includes(m.id)&&replyStatus(s,e.id,m.id)?.type!=='declined'}
@@ -159,11 +162,18 @@ export default function Calendar(){
                   {its.slice(0,4).map((it,idx)=>(
                     <div key={idx} className={`mini-event ${it.purple?'purple':''} ${it.cancelled?'cancelled':''}`}>
                       {it.type==='meeting'?'🔵':'🟣'} {it.title}
-                      {it.type==='meeting'&&canCancel&&
-                        <button style={{float:'right',border:0,background:'transparent',cursor:'pointer'}} onClick={()=>cancelDay(it.meeting.branchId,it.date)}>
-                          {it.cancelled?'↺':'×'}
-                        </button>
-                      }
+                      {it.type==='meeting'&&canCancel&& (
+                        <div style={{float:'right'}}>
+                          {it.cancelled ? (
+                            <button style={{border:0,background:'transparent',cursor:'pointer'}} onClick={()=>cancelDay(it.meeting.branchId,it.date)}>↺</button>
+                          ) : (
+                            <>
+                              <button title="標記取消" style={{border:0,background:'transparent',cursor:'pointer'}} onClick={()=>cancelDay(it.meeting.branchId,it.date,'cancelled')}>✕</button>
+                              <button title="標記休會" style={{border:0,background:'transparent',cursor:'pointer'}} onClick={()=>cancelDay(it.meeting.branchId,it.date,'recess')}>💤</button>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -177,12 +187,23 @@ export default function Calendar(){
           {calendarItems.sort((a,b)=>a.date.localeCompare(b.date)).slice(0,60).map((it,idx)=>(
             <div key={idx} className={`event-line ${it.purple?'event-purple':'event-blue'}`}>
               <div>
-                <strong>{it.cancelled?'已取消：':''}{it.type==='meeting'?'🔵':'🟣'} {it.title}</strong>
+                <strong>{it.cancelled? (it.meeting?.type==='recess'?'休會：':'已取消：') : ''}{it.type==='meeting'?'🔵':'🟣'} {it.title}</strong>
                 <div className="muted">{it.date}{it.type==='event'?` · ${it.event?.location||'待定'} · ${it.event?.source||''}`:` · ${it.meeting?.startTime||''}-${it.meeting?.endTime||''} · ${it.meeting?.location||''}`}</div>
               </div>
               <div className="row">
-                {it.type==='event'?<span>{rightForEvent(it.event)}</span>:<span className={`badge ${it.cancelled?'red':'green'}`}>{it.cancelled?'不用集會':'恆常'}</span>}
-                {it.type==='meeting'&&canCancel&&<button className="btn" onClick={()=>cancelDay(it.meeting.branchId,it.date)}>{it.cancelled?'恢復':'× 標記不用集會'}</button>}
+                {it.type==='event'?<span>{rightForEvent(it.event)}</span>:<span className={`badge ${it.cancelled?'red':'green'}`}>{it.cancelled?(it.meeting?.type==='recess'?'休會':'取消'):'恆常'}</span>}
+                {it.type==='meeting'&&canCancel&& (
+                  <>
+                    {it.cancelled ? (
+                      <button className="btn" onClick={()=>cancelDay(it.meeting.branchId,it.date)}>恢復</button>
+                    ) : (
+                      <>
+                        <button className="btn red" onClick={()=>cancelDay(it.meeting.branchId,it.date,'cancelled')}>✕ 取消</button>
+                        <button className="btn" onClick={()=>cancelDay(it.meeting.branchId,it.date,'recess')}>💤 休會</button>
+                      </>
+                    )}
+                  </>
+                )}
                 {it.type==='event'&&['super_admin','troop_super','admin','group_leader','branch_leader','coach'].includes(role)&&<a className="btn" href={`/admin/registrations?eventId=${it.event.id}`}>查看→</a>}
               </div>
             </div>

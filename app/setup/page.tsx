@@ -5,7 +5,7 @@ export default function Setup(){
 return <div className="stack">
 <section className="hero">
   <span className="badge gold">🧩 接入教學</span>
-  <h1>如何接入 ScoutSystem 2.0</h1>
+  <h1>如何接入 2026 Scout System</h1>
   <p>6 步完成。最後一步提交申請，等管理員開通即可使用。</p>
   <Link className="btn gold" href="/onboard">開始接入 →</Link>
 </section>
@@ -57,7 +57,7 @@ return <div className="stack">
     <dt>看不到我的旅團？</dt>
     <dd>代表尚未開通。請先到「申請接入」提交，等管理員確認。</dd>
     <dt>忘記了 API Key？</dt>
-    <dd>到 Google Sheet 選單 → ScoutSystem 2.0 → 重新生成 API Key，把新 Key 提交給管理員。</dd>
+    <dd>到 Google Sheet 選單 → 2026 Scout System → 重新生成 API Key，把新 Key 提交給管理員。</dd>
     <dt>Deploy 後出現 Access Denied？</dt>
     <dd>確認「誰可以存取」設成了「任何人」，不是「只有我自己」。</dd>
     <dt>登入後看不到成員？</dt>

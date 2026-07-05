@@ -78,11 +78,11 @@ export default function Profile(){
 
       <label>密碼<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="留空 = 不改"/></label>
 
-      {session.role!=='member' && !LEADER_ROLES.includes(session.role) && (
-        <label>Email（登入用）<input type="email" value={email} onChange={e=>setEmail(e.target.value)}/></label>
+      {(session.role==='member' || !LEADER_ROLES.includes(session.role)) && (
+        <label>Email（用於找回密碼）<input type="email" value={email} onChange={e=>setEmail(e.target.value)}/></label>
       )}
       {LEADER_ROLES.includes(session.role) && (
-        <p className="muted">領袖的 Email 不可自行修改，請聯絡管理員。</p>
+        <p className="muted">領袖的 Email 如需更改，請聯絡管理員。</p>
       )}
 
       {session.role==='member' && (
@@ -97,8 +97,8 @@ export default function Profile(){
           <label>隊內身份
             <select value={patrolRole} onChange={e=>setPatrolRole(e.target.value)}>
               <option value="">隊員</option>
-              <option value="leader">隊長長</option>
-              <option value="deputy">副隊長 / 副隊長</option>
+              <option value="leader">隊長</option>
+              <option value="deputy">副隊長</option>
             </select>
           </label>
           <p className="muted">出生日期和 YMIS 不可自行修改，如有需要請聯絡領袖。</p>

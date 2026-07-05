@@ -1,10 +1,14 @@
-# ScoutSystem 2.0 UI Prototype
+# 2026 Scout System UI Prototype
 
 這是旅團管理系統 2.0 的重構版 UI，不覆寫 1.0。
 
 - UI first；後台 Google Sheet / Apps Script 之後以小白模式重建
 - 活動 / 通告 / 圖書館 / 行事曆按最新邏輯重整
 - 加入元件市場與轉駁中心
+- 密碼管理：支持用戶自行修改密碼及 Email 找回密碼
+- 收款連結：活動與通告可填寫 FPS/PayPal 連結
+- 值日提醒：活動可標記值日小隊，成員可看專屬提示
+- 收合界面：控制台加入收合卡片功能，界面更整潔
 - 插件統一使用 `u` 參數：區=字母碼，旅團=純數字碼
 
 ## 開發
@@ -44,4 +48,4 @@ npm run build
 - 在重要欄位加入 note 提示
 - 初始化後只顯示小白需要看的分頁：README、SystemConfig、Branches、Patrols、Members
 - 隱藏 Roles、FieldSettings、Users、Applications、Events、EventReplies、LibraryBookmarks、Notices、Plugins、AuditLogs
-- 上方選單 `ScoutSystem 2.0` 可顯示 / 隱藏進階分頁及重新格式化
+- 上方選單 `2026 Scout System` 可顯示 / 隱藏進階分頁及重新格式化

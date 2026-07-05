@@ -1,4 +1,4 @@
-# ScoutSystem 2.0 旅團接入指南
+# 2026 Scout System 旅團接入指南
 
 > **你是新旅團，照這份做就可以接入。**
 
@@ -40,7 +40,7 @@
 4. ⚠️ **彈窗會顯示你的 API Key（只顯示一次！立即複製！）**
 
 > 🔑 **API Key 是連接你後台的鑰匙。** 彈窗只出現一次！
-> 忘記了？到 Sheet 選單 → ScoutSystem 2.0 → 重新生成 API Key。
+> 忘記了？到 Sheet 選單 → 2026 Scout System → 重新生成 API Key。
 
 ---
 
@@ -71,7 +71,7 @@
 
 ### 建立管理員帳號
 
-上方選單 → ScoutSystem 2.0 → **重新建立管理員帳號**
+上方選單 → 2026 Scout System → **重新建立管理員帳號**
 
 ---
 
@@ -140,7 +140,7 @@
 → 尚未開通。請到「申請接入」提交，等管理員確認。
 
 **忘記了 API Key？**
-→ Sheet 選單 → ScoutSystem 2.0 → 重新生成 API Key，然後提交新 Key 給管理員。
+→ Sheet 選單 → 2026 Scout System → 重新生成 API Key，然後提交新 Key 給管理員。
 
 **登入後看不到成員？**
 → 確認 Members 表有填 ymNumber（10 位數字），active = TRUE。

@@ -21,6 +21,7 @@ export default function Page(){
   const [eName,setEName]=useState('');const [eYm,setEYm]=useState('');const [eBranch,setEBranch]=useState('b3');
   const [ePatrol,setEPatrol]=useState('');const [eDob,setEDob]=useState('');const [ePhone,setEPhone]=useState('');
   const [eEmergencyName,setEEmergencyName]=useState('');const [eParent,setEParent]=useState('');const [ePw,setEPw]=useState('');
+  const [eEmail,setEEmail]=useState('');const [eSpecialRole,setESpecialRole]=useState('');
 
   useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message))},[]);
 
@@ -41,6 +42,7 @@ export default function Page(){
     setEditing(id);setEName(c.name);setEYm(c.ymNumber);setEBranch(c.branchId);
     setEPatrol(c.patrolId||'');setEDob(c.dateOfBirth||'');setEPhone(c.emergencyContactPhone||'');
     setEEmergencyName(c.emergencyContactName||'');setEParent(c.parentUserId||'');setEPw('');
+    setEEmail(c.email||'');setESpecialRole(c.specialRole||'');
   }
 
   async function saveEdit(){
@@ -50,6 +52,7 @@ export default function Page(){
       const fresh=await apiUpdateMember({
         memberId:editing,name:eName,ymNumber:eYm,branchId:eBranch,patrolId:ePatrol,
         dateOfBirth:eDob,emergencyContactPhone:ePhone,emergencyContactName:eEmergencyName,
+        email:eEmail, specialRole:eSpecialRole,
         ...(ePw?{password:ePw}:{})
       });
       // parent link separately
@@ -98,7 +101,7 @@ export default function Page(){
 
     <section className="card">
       <table className="table">
-        <thead><tr><th>姓名</th><th>YMIS</th><th>支部</th><th>小隊</th><th>隊內身份</th><th>年齡</th><th>家長連結</th><th>操作</th></tr></thead>
+        <thead><tr><th>姓名</th><th>YMIS</th><th>支部</th><th>小隊</th><th>特別身份</th><th>年齡</th><th>Email / 改密碼</th><th>家長連結</th><th>操作</th></tr></thead>
         <tbody>{s.members.map(c=>{
           const isEdit=editing===c.id;
           if(isEdit)return (
@@ -107,9 +110,12 @@ export default function Page(){
               <td><input value={eYm} onChange={e=>setEYm(e.target.value)} style={{width:100}}/></td>
               <td><select value={eBranch} onChange={e=>{setEBranch(e.target.value);setEPatrol('')}} style={{width:80}}>{branches.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}</select></td>
               <td><select value={ePatrol} onChange={e=>setEPatrol(e.target.value)} style={{width:80}}><option value="">不適用</option>{s.patrols.filter(p=>p.branchId===eBranch&&p.enabled).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></td>
+              <td><input value={eSpecialRole} onChange={e=>setESpecialRole(e.target.value)} placeholder="如：主席" style={{width:80}}/></td>
               <td>—</td>
-              <td><input type="date" value={eDob} onChange={e=>setEDob(e.target.value)} style={{width:120}}/></td>
-              <td><input value={ePw} onChange={e=>setEPw(e.target.value)} placeholder="改密碼" style={{width:80}}/></td>
+              <td>
+                <input value={eEmail} onChange={e=>setEEmail(e.target.value)} placeholder="Email" style={{width:100,display:'block',marginBottom:4}}/>
+                <input value={ePw} onChange={e=>setEPw(e.target.value)} placeholder="改密碼" style={{width:100}}/>
+              </td>
               <td><select value={eParent} onChange={e=>setEParent(e.target.value)} style={{width:80}}><option value="">未連結</option>{parents.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></td>
               <td><button className="btn primary" onClick={saveEdit}>儲存</button> <button className="btn" onClick={()=>setEditing(null)}>取消</button></td>
             </tr>
@@ -120,8 +126,9 @@ export default function Page(){
               <td>{c.ymNumber}</td>
               <td>{branchName(c.branchId)}</td>
               <td>{patrolName(c.patrolId)}</td>
-              <td>{roleLabel(c.patrolRole)}</td>
+              <td>{c.specialRole || roleLabel(c.patrolRole)}</td>
               <td>{c.age>0?c.age:'—'}</td>
+              <td>{c.email || '—'}</td>
               <td><select value={c.parentUserId||''} onChange={e=>linkParent(c.id,e.target.value)}><option value="">未連結</option>{parents.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></td>
               <td><button className="btn" onClick={()=>startEdit(c.id)}>✏️</button> <button className="btn" onClick={()=>del(c.id)}>🗑️</button></td>
             </tr>

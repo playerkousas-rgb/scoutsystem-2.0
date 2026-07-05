@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { APPROVED_TROOPS } from '@/lib/troops';
 
 /**
- * ScoutSystem 2.0 — API Proxy
+ * 2026 Scout System — API Proxy
  * 
  * 前端不直接呼叫 Google Apps Script，而是經此代理。
  * API Key 存在 Vercel 環境變數，不會出現在前端 JS。

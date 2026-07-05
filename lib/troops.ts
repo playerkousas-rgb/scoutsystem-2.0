@@ -1,4 +1,4 @@
-// ScoutSystem 2.0 已接入旅團登記表
+// 2026 Scout System 已接入旅團登記表
 // 由系統管理員維護：旅團提交申請（/onboard）→ 管理員審核 → 在這裡加入
 // 用戶只能看到旅團名稱和號碼，看不到後台 URL
 // API Key 存在 Vercel 環境變數（TROOP_{旅團號}_APIKEY），不會出現在前端 JS

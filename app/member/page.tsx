@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { AppState, loadState, visibleEventsForMember, replyStatus } from '@/lib/store';
 import { apiSetReply } from '@/lib/api';
 import { getSession } from '@/lib/session';
+import Collapsible from '@/components/Collapsible';
+
 export default function Member(){
   const [s,setS]=useState<AppState|null>(null);const [err,setErr]=useState('');
   const [loadingId,setLoadingId]=useState('');
@@ -18,14 +20,68 @@ export default function Member(){
     try{const f=await apiSetReply({eventId:eid,memberId:member.id,type});setS(f)}catch(e:any){setErr(e.message)}finally{setLoadingId('')}
   }
   const events=visibleEventsForMember(s,member);
-  return <div className="stack"><section className="hero"><span className="badge gold">成員控制台</span><h1>{member.name} 的活動</h1><p>{adult?'你已 18 歲或以上，可自行 ✅ / ❌。':'你未滿 18 歲，可按 ❤️ 表示有興趣；參加 / 不參加由家長決定。'}</p></section>
-    {err&&<p className="badge red">{err}</p>}
-    <section className="stack">{events.length===0?<div className="card"><p className="muted">暫無可見活動。</p></div>:
-      events.map(e=>{const r=replyStatus(s,e.id,member.id);return <div className="event-line event-blue" key={e.id}><div><strong>{e.title}</strong><div className="muted">{e.date} · {e.location}{e.fee?` · ${e.fee}`:''}</div></div>
-        <div className="row"><span className="badge gold">{r?.type||'未回覆'}</span>
-          <button className="btn" disabled={loadingId===e.id+'interested'} onClick={()=>act(e.id,'interested')}>❤️ 有興趣</button>
-          {adult&&<><button className="btn primary" disabled={loadingId===e.id+'registered'} onClick={()=>act(e.id,'registered')}>✅ 參加</button><button className="btn" disabled={loadingId===e.id+'declined'} onClick={()=>act(e.id,'declined')}>❌ 不參加</button></>}
-        </div></div>;
-      })}</section>
-  </div>;
+  
+  return (
+    <div className="stack">
+      <section className="hero">
+        <span className="badge gold">成員控制台</span>
+        <h1>{member.name} 的個人空間</h1>
+        <p>已登入：{member.name} (成員)</p>
+      </section>
+
+      {err&&<p className="badge red">{err}</p>}
+
+      <Collapsible title="📢 活動與集會" defaultOpen={true}>
+        <p className="muted">{adult?'你已 18 歲或以上，可自行 ✅ / ❌。':'你未滿 18 歲，可按 ❤️ 表示有興趣；參加 / 不參加由家長決定。'}</p>
+        <div className="stack">
+          {events.length===0?<div className="card"><p className="muted">暫無可見活動。</p></div>:
+            events.map(e=>{
+              const r=replyStatus(s,e.id,member.id);
+              const isDuty = e.dutyPatrol && member.patrolId && s.patrols.find(p => p.id === member.patrolId)?.name === e.dutyPatrol;
+              return (
+                <div className={`event-line ${isDuty ? 'event-purple' : 'event-blue'}`} key={e.id}>
+                  <div>
+                    <div className="row">
+                      <strong>{e.title}</strong>
+                      {isDuty && <span className="badge purple">你的小隊值日</span>}
+                      {e.dutyPatrol && !isDuty && <span className="badge">{e.dutyPatrol} 值日</span>}
+                    </div>
+                    <div className="muted">
+                      {e.date} · {e.location}{e.fee?` · ${e.fee}`:''}
+                    </div>
+                    {e.paymentUrl && (
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <a href={e.paymentUrl} target="_blank" rel="noopener noreferrer" className="btn gold" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}>前往付款</a>
+                      </div>
+                    )}
+                  </div>
+                  <div className="row">
+                    <span className="badge gold">{r?.type||'未回覆'}</span>
+                    <button className="btn" disabled={loadingId===e.id+'interested'} onClick={()=>act(e.id,'interested')}>❤️ 有興趣</button>
+                    {adult&&<>
+                      <button className="btn primary" disabled={loadingId===e.id+'registered'} onClick={()=>act(e.id,'registered')}>✅ 參加</button>
+                      <button className="btn" disabled={loadingId===e.id+'declined'} onClick={()=>act(e.id,'declined')}>❌ 不參加</button>
+                    </>}
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      </Collapsible>
+
+      <Collapsible title="🆘 個人緊急聯絡資料">
+        <div className="stack card" style={{ background: '#f8f9fa' }}>
+          <div className="row"><strong>聯絡人：</strong><span>{member.emergencyContactName || '未設定'}</span></div>
+          <div className="row"><strong>電話：</strong><span>{member.emergencyContactPhone || '未設定'}</span></div>
+          <div className="row"><strong>支部：</strong><span>{member.branchId}</span></div>
+          <div className="row"><strong>小隊：</strong><span>{s.patrols.find(p=>p.id===member.patrolId)?.name || '—'}</span></div>
+        </div>
+      </Collapsible>
+
+      <div className="row" style={{ marginTop: '2rem' }}>
+        <Link className="btn" href="/profile">我的資料 / 改密碼</Link>
+        <Link className="btn" href="/calendar">行事曆</Link>
+      </div>
+    </div>
+  );
 }

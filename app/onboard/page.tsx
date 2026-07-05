@@ -70,7 +70,7 @@ API Key：${apiKey}
         <ul className="muted">
           <li>到黃色 <strong>SystemConfig</strong> 填 TROOP_CODE、TROOP_NAME、ADMIN_EMAIL</li>
           <li>到藍色 <strong>Members</strong> 輸入成員（ymNumber 必須 10 位數字）</li>
-          <li>上方選單 → ScoutSystem 2.0 → 重新建立管理員帳號</li>
+          <li>上方選單 → 2026 Scout System → 重新建立管理員帳號</li>
         </ul>
         <div className="row">
           <button className="btn" onClick={()=>setStep(2)}>← 上一步</button>
@@ -104,7 +104,7 @@ API Key：${apiKey}
         <label>Apps Script /exec 網址<input placeholder="https://script.google.com/macros/s/.../exec" value={webAppUrl} onChange={e=>setWebAppUrl(e.target.value)}/></label>
         <label>API Key<input placeholder="ak_xxxxxxxx（setup 彈窗顯示的 Key）" value={apiKey} onChange={e=>setApiKey(e.target.value)}/></label>
         <p className="muted" style={{fontSize:13}}>
-          💡 API Key 在 setup 彈窗只顯示一次。忘記了？到 Sheet 選單 → ScoutSystem 2.0 → 重新生成 API Key。
+          💡 API Key 在 setup 彈窗只顯示一次。忘記了？到 Sheet 選單 → 2026 Scout System → 重新生成 API Key。
         </p>
         <label>備註<textarea rows={2} value={note} onChange={e=>setNote(e.target.value)}/></label>
         <a className={`btn primary${canSubmit?'':' disabled'}`}
@@ -123,7 +123,7 @@ API Key：${apiKey}
   return <div className="stack">
     <section className="hero">
       <span className="badge gold">🧩 旅團接入</span>
-      <h1>接入 ScoutSystem 2.0</h1>
+      <h1>接入 2026 Scout System</h1>
       <p>照步驟完成，提交後等平台管理員開通，即可使用。</p>
     </section>
 

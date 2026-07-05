@@ -27,10 +27,23 @@ export default function Home(){
   }
 
   const selected=troops.find(t=>t.key===selectedKey);
+  const [s, setS] = useState<AppState | null>(null);
+  useEffect(() => { if (selectedKey) loadState().then(setS).catch(() => {}) }, [selectedKey]);
+
+  const reminders = s?.meetings?.filter(m => {
+    const today = new Date().toISOString().slice(0, 10);
+    return m.status === 'published' && m.date >= today;
+  }).sort((a,b) => a.date.localeCompare(b.date)).slice(0, 2) || [];
 
   return <div className="stack">
+    {reminders.length > 0 && (
+      <div style={{ background: '#fff3cd', color: '#856404', padding: '10px', borderRadius: '8px', marginBottom: '10px', fontSize: '0.9rem' }}>
+        <strong>🔔 重要通知：</strong>
+        {reminders.map(r => <span key={r.id} style={{ marginLeft: '10px' }}>{r.date} {r.title} ({r.type==='agenda'?'議程':'紀錄'})</span>)}
+      </div>
+    )}
     <section className="hero">
-      <span className="badge gold">ScoutSystem 2.0</span>
+      <span className="badge gold">2026 Scout System</span>
       <h1>{selected?selected.name:'旅團管理系統'}</h1>
       <p>選擇你的旅團後登入。如果你的旅團尚未接入，請先申請。</p>
       <div className="row">

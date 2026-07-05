@@ -1,5 +1,5 @@
 /**
- * ScoutSystem 2.0 — 完整後台（Setup + API + 角色過濾）
+ * 2026 Scout System — 完整後台（Setup + API + 角色過濾）
  *
  * 核心改動 vs 之前版本：
  *   - getState → getDashboard(userId)：按角色過濾，不再回傳全部資料
@@ -62,7 +62,7 @@ function setupScoutSystem() {
   if (readme) ss.setActiveSheet(readme);
 
   SpreadsheetApp.getUi().alert(
-    'ScoutSystem 2.0 初始化完成',
+    '2026 Scout System 初始化完成',
     '已建立工作表、標記顏色、加上欄位說明，並隱藏進階後台分頁。\n\n'
     + '接下來：\n'
     + '1. 到黃色 SystemConfig 填 TROOP_CODE、TROOP_NAME、ADMIN_EMAIL\n'
@@ -171,18 +171,21 @@ function getInitialSheets_() {
       ['applicationId', 'type', 'name', 'email', 'role', 'branchId', 'ymNumbers', 'dateOfBirth', 'gender', 'password', 'status', 'approvedBy', 'createdAt', 'decidedAt', 'note']
     ],
     Members: [
-      ['memberId', 'ymNumber', 'password', 'name', 'branchId', 'patrolId', 'patrolRole', 'dateOfBirth', 'parentUserId', 'emergencyContactName', 'emergencyContactPhone', 'active', 'note'],
-      ['m_ex1', '1234567890', '1234567890', '陳大文（範例）', 'b3', 'p5', 'leader', '2012-03-15', '', '陳太', '9123 4567', true, '範例：童軍支部成員，TIGER 小隊隊長。請修改或刪除。'],
-      ['m_ex2', '2345678901', '2345678901', '李小美（範例）', 'b2', 'p1', 'member', '2015-07-20', '', '李太', '9876 5432', true, '範例：幼童軍支部成員，RED 隊。請修改或刪除。']
+      ['memberId', 'ymNumber', 'password', 'name', 'email', 'branchId', 'patrolId', 'patrolRole', 'specialRole', 'dateOfBirth', 'parentUserId', 'emergencyContactName', 'emergencyContactPhone', 'active', 'note'],
+      ['m_ex1', '1234567890', '1234567890', '陳大文（範例）', '', 'b3', 'p5', 'leader', '', '2012-03-15', '', '陳太', '9123 4567', true, '範例：童軍支部成員，TIGER 小隊隊長。請修改或刪除。'],
+      ['m_ex2', '2345678901', '2345678901', '李小美（範例）', '', 'b2', 'p1', 'member', '', '2015-07-20', '', '李太', '9876 5432', true, '範例：幼童軍支部成員，RED 隊。請修改或刪除。']
+    ],
+    Meetings: [
+      ['meetingId', 'title', 'type', 'date', 'startTime', 'endTime', 'location', 'targetRoles', 'branchId', 'url', 'status', 'createdBy', 'createdAt', 'note']
     ],
     Events: [
-      ['eventId', 'title', 'scope', 'branchId', 'date', 'location', 'kind', 'status', 'source', 'fee', 'targetMemberIds', 'createdBy', 'createdAt', 'note']
+      ['eventId', 'title', 'scope', 'branchId', 'date', 'location', 'kind', 'status', 'source', 'fee', 'paymentUrl', 'dutyPatrol', 'targetMemberIds', 'createdBy', 'createdAt', 'note']
     ],
     EventReplies: [
       ['replyId', 'eventId', 'memberId', 'memberName', 'branchId', 'parentUserId', 'type', 'operatedBy', 'paid', 'cancelled', 'createdAt', 'updatedAt', 'notes']
     ],
     LibraryBookmarks: [
-      ['bookmarkId', 'circularKey', 'title', 'source', 'region', 'circularDate', 'sourceUrl', 'attachmentUrl', 'officialDeadline', 'internalDeadline', 'mode', 'activityType', 'targetText', 'eligibility', 'fee', 'branchTags', 'audienceTags', 'status', 'convertedEventId', 'ownerUserId', 'createdBy', 'createdAt', 'note']
+      ['bookmarkId', 'circularKey', 'title', 'source', 'region', 'circularDate', 'sourceUrl', 'attachmentUrl', 'paymentUrl', 'officialDeadline', 'internalDeadline', 'mode', 'activityType', 'targetText', 'eligibility', 'fee', 'branchTags', 'audienceTags', 'status', 'convertedEventId', 'ownerUserId', 'createdBy', 'createdAt', 'note']
     ],
     Announcements: [
       ['announcementId', 'fileId', 'fileName', 'fileUrl', 'fileSize', 'branchTags', 'audienceTags', 'status', 'updatedAt', 'note']
@@ -193,7 +196,7 @@ function getInitialSheets_() {
       ['rm2', 'b2', '幼童軍恆常集會', 6, '14:00', '16:00', '本中心', true, '星期六恆常集會']
     ],
     CancelledMeetings: [
-      ['cancelId', 'branchId', 'date', 'reason', 'markedBy', 'markedAt']
+      ['cancelId', 'branchId', 'date', 'type', 'reason', 'markedBy', 'markedAt']
     ],
     Notices: [
       ['noticeId', 'title', 'mode', 'branchTags', 'publishedAt', 'createdBy', 'status', 'note']
@@ -232,14 +235,14 @@ function setupReadmeSheet_(ss) {
   var sh = ss.getSheetByName(name) || ss.insertSheet(name, 0);
   sh.showSheet(); sh.clear();
   var rows = [
-    ['ScoutSystem 2.0 旅團設定指南', ''],
+    ['2026 Scout System 旅團設定指南', ''],
     ['', ''],
     ['你現在需要做的事', '照順序完成。做完第 6 步就可以去系統提交申請。'],
     ['1', '到黃色 SystemConfig 填 TROOP_CODE（旅團號）、TROOP_NAME（旅團名）、ADMIN_EMAIL（你的 email）。'],
     ['2', '到綠色 Branches 確認支部。enabled = TRUE 表示啟用。'],
     ['3', '到綠色 Patrols 修改小隊名稱。'],
     ['4', '到藍色 Members 輸入成員（ymNumber 必須 10 位數字）。'],
-    ['5', '上方選單 ScoutSystem 2.0 → 重新建立管理員帳號。'],
+    ['5', '上方選單 2026 Scout System → 重新建立管理員帳號。'],
     ['6', '部署 Web App：Apps Script 右上方「部署」→「網頁應用程式」→ 執行身分：我 → 誰可以存取：任何人 → 部署。複製 /exec 網址。'],
     ['7', '🔑 Setup 彈窗已顯示 API Key（只顯示一次！）。如果你還沒複製，到選單 → 重新生成 API Key。'],
     ['8', '到 ScoutSystem 前端 →「申請接入」→ 填入旅團名稱、旅團號、/exec 網址、API Key → 提交。'],
@@ -268,7 +271,7 @@ function setupReadmeSheet_(ss) {
     ['淺藍', '日常資料（Members）。'],
     ['灰色 / 紅色', '系統後台 / Audit，已隱藏。'],
     ['', ''],
-    ['如要看被隱藏表', '上方選單 ScoutSystem 2.0 → 顯示進階分頁。']
+    ['如要看被隱藏表', '上方選單 2026 Scout System → 顯示進階分頁。']
   ];
   sh.getRange(1, 1, rows.length, 2).setValues(rows);
   sh.getRange('A1:B1').merge().setBackground(SHEET_COLORS.readme).setFontColor('white').setFontWeight('bold').setFontSize(16);
@@ -356,7 +359,7 @@ function showAdvancedSheets() {
   SpreadsheetApp.getUi().alert('已顯示進階分頁。');
 }
 function onOpen() {
-  SpreadsheetApp.getUi().createMenu('ScoutSystem 2.0')
+  SpreadsheetApp.getUi().createMenu('2026 Scout System')
     .addItem('顯示進階分頁', 'showAdvancedSheets')
     .addItem('隱藏進階分頁', 'hideAdvancedSheets')
     .addSeparator()
@@ -617,8 +620,9 @@ function mapMembers_() {
   return readTable_('Members').map(function (m) {
     return {
       id: getField_(m, 'memberId'), ymNumber: String(getField_(m, 'ymNumber') || ''),
-      name: getField_(m, 'name'), branchId: getField_(m, 'branchId'),
+      name: getField_(m, 'name'), email: getField_(m, 'email') || '', branchId: getField_(m, 'branchId'),
       patrolId: getField_(m, 'patrolId') || '', patrolRole: getField_(m, 'patrolRole') || '',
+      specialRole: getField_(m, 'specialRole') || '',
       age: calcAge_(getField_(m, 'dateOfBirth')), dateOfBirth: fmtDate_(getField_(m, 'dateOfBirth')),
       parentUserId: getField_(m, 'parentUserId') || '',
       emergencyContactName: getField_(m, 'emergencyContactName') || '',
@@ -654,6 +658,7 @@ function mapEvents_() {
       date: fmtDate_(getField_(e, 'date')), location: getField_(e, 'location') || '',
       kind: getField_(e, 'kind') || 'activity', status: getField_(e, 'status') || 'draft',
       source: getField_(e, 'source') || '', fee: getField_(e, 'fee') || '',
+      paymentUrl: getField_(e, 'paymentUrl') || '', dutyPatrol: getField_(e, 'dutyPatrol') || '',
       targetMemberIds: targets
     };
   });
@@ -686,6 +691,7 @@ function mapBookmarks_() {
       circularDate: fmtDate_(getField_(b, 'circularDate')),
       sourceUrl: getField_(b, 'sourceUrl') || '',
       attachmentUrl: getField_(b, 'attachmentUrl') || '',
+      paymentUrl: getField_(b, 'paymentUrl') || '',
       officialDeadline: fmtDate_(getField_(b, 'officialDeadline')),
       internalDeadline: fmtDate_(getField_(b, 'internalDeadline')),
       mode: getField_(b, 'mode') || 'informational',
@@ -716,11 +722,24 @@ function mapRegularMeetings_() {
   });
 }
 
+function mapMeetings_() {
+  return readTable_('Meetings').map(function (m) {
+    return {
+      id: getField_(m, 'meetingId'), title: getField_(m, 'title'), type: getField_(m, 'type'),
+      date: fmtDate_(getField_(m, 'date')), startTime: fmtTime_(getField_(m, 'startTime')),
+      endTime: fmtTime_(getField_(m, 'endTime')), location: getField_(m, 'location'),
+      targetRoles: parseArray_(getField_(m, 'targetRoles')), branchId: getField_(m, 'branchId'),
+      url: getField_(m, 'url'), status: getField_(m, 'status') || 'draft'
+    };
+  });
+}
+
 function mapCancelledMeetings_() {
   return readTable_('CancelledMeetings').map(function (c) {
     return {
       id: getField_(c, 'cancelId'), branchId: getField_(c, 'branchId'),
-      date: fmtDate_(getField_(c, 'date')), reason: getField_(c, 'reason') || '',
+      date: fmtDate_(getField_(c, 'date')), type: getField_(c, 'type') || 'cancelled',
+      reason: getField_(c, 'reason') || '',
       markedBy: getField_(c, 'markedBy') || '',
       markedAt: getField_(c, 'markedAt') ? fmtDate_(getField_(c, 'markedAt')) || getField_(c, 'markedAt') : ''
     };
@@ -795,6 +814,7 @@ function buildDashboard(userId) {
   var allBookmarks = mapBookmarks_();
   var allRegularMeetings = mapRegularMeetings_();
   var allCancelledMeetings = mapCancelledMeetings_();
+  var allMeetings = mapMeetings_();
   var allApplications = mapApplications_();
   var allAudits = mapAudits_();
   var config = mapConfig_();
@@ -804,6 +824,7 @@ function buildDashboard(userId) {
     events: [], replies: [], bookmarks: [],
     announcements: [], announcementPdfs: [],
     regularMeetings: [], cancelledMeetings: [],
+    meetings: [],
     plugins: [], audits: [], config: config,
     userFeatures: []  // 當前用戶的功能權限
   };
@@ -875,6 +896,7 @@ function buildDashboard(userId) {
     state.bookmarks = allBookmarks;
     state.regularMeetings = allRegularMeetings;
     state.cancelledMeetings = allCancelledMeetings;
+    state.meetings = allMeetings;
     state.audits = allAudits;
 
   } else if (role === 'group_leader' || role === 'branch_leader') {
@@ -891,6 +913,12 @@ function buildDashboard(userId) {
     state.bookmarks = allBookmarks;
     state.regularMeetings = allRegularMeetings.filter(function (r) { return r.branchId === branchId; });
     state.cancelledMeetings = allCancelledMeetings.filter(function (c) { return c.branchId === branchId; });
+    state.meetings = allMeetings.filter(function (m) {
+      if (m.branchId && m.branchId !== branchId) return false;
+      if (m.status !== 'published') return false;
+      // Filter by targetRoles
+      return true; // Simplified for now
+    });
     state.audits = allAudits.filter(function (a) { return a.userId === userId; });
 
   } else if (role === 'coach') {
@@ -1170,8 +1198,10 @@ function doGet(e) {
       // ---- 公開寫入（不需登入） ----
       case 'applyJoin': return wrapPublic_(handleApplyJoin_(p));
       case 'importFromLibrary': return wrapPublic_(handleImportFromLibrary_(p));
+      case 'forgotPassword': return wrapPublic_(handleForgotPassword_(p));
 
       // ---- 需登入寫入 ----
+      case 'updatePassword': return wrap_(handleUpdatePassword_(p), p);
       case 'cancelReply': return wrap_(handleCancelReply_(p), p);
       case 'toggleSystemLock': return wrapPublic_(toggleSystemLock(p));
       case 'autoRepairParentLinks': return wrap_(autoRepairParentLinks_(), p);
@@ -1208,8 +1238,12 @@ function doGet(e) {
       case 'getAnnouncements': return json(getAnnouncements(p));
       case 'deleteAnnouncement': return wrap_(deleteAnnouncement(p), p);
       case 'addRow': return wrap_(genericAddRow(p), p);
-      case 'updateRow': return wrap_(genericUpdateRow(p), p);
-      case 'deleteRow': return wrap_(genericDeleteRow(p), p);
+      case 'createMeeting': return wrap_(handleCreateMeeting_(p), p);
+      case 'updateMeeting': return wrap_(handleUpdateMeeting_(p), p);
+      case 'deleteMeeting': return wrap_(handleDeleteMeeting_(p), p);
+      case 'publishMeeting': return wrap_(handlePublishMeeting_(p), p);
+      case 'updateUserPermissions': return wrap_(handleUpdateUserPermissions_(p), p);
+      case 'updateUserField': return wrap_(handleUpdateUserField_(p), p);
 
       default:
         return json({ success: false, error: '未知 action: ' + action });
@@ -1321,6 +1355,87 @@ function handleLogin_(p) {
     dashboard: dash
   }});
 }
+
+function handleUpdatePassword_(p) {
+  var userId = p.userId || p.operatedBy;
+  var newPw = p.newPassword;
+  if (!newPw) return { success: false, error: '請提供新密碼' };
+  
+  // Try Users table
+  var userIdx = findRowIndexById_('Users', 'userId', userId);
+  if (userIdx >= 0) {
+    updateCellByName_('Users', 'userId', userId, 'password', newPw);
+    writeAudit_(userId, 'updatePassword', 'Users', userId, 'updated');
+    return { success: true };
+  }
+  
+  // Try Members table
+  var memberIdx = findRowIndexById_('Members', 'memberId', userId);
+  if (memberIdx >= 0) {
+    updateCellByName_('Members', 'memberId', userId, 'password', newPw);
+    writeAudit_(userId, 'updatePassword', 'Members', userId, 'updated');
+    return { success: true };
+  }
+  
+  return { success: false, error: '找不到使用者記錄' };
+}
+
+function handleForgotPassword_(p) {
+  var identifier = (p.identifier || '').trim(); // email or ymis
+  var loginType = p.loginType || 'account';
+  var troopName = getConfigValue_('TROOP_NAME') || '旅團管理系統';
+
+  var user = null;
+  var email = '';
+  var name = '';
+
+  if (loginType === 'member') {
+    var members = readTable_('Members');
+    var member = members.filter(function(m){return String(getField_(m, 'ymNumber')).trim() === identifier;})[0];
+    if (!member) return { success: false, error: '找不到此 YMIS 編號的成員' };
+    name = getField_(member, 'name');
+    // Try to get email from Users if they have one linked
+    var membersUser = readTable_('Users').filter(function(u){return getField_(u, 'memberId') === getField_(member, 'memberId');})[0];
+    email = membersUser ? getField_(membersUser, 'email') : '';
+    // If no direct email, try parent's email
+    if (!email && getField_(member, 'parentUserId')) {
+      var parent = readTable_('Users').filter(function(u){return getField_(u, 'userId') === getField_(member, 'parentUserId');})[0];
+      email = parent ? getField_(parent, 'email') : '';
+    }
+    user = member;
+  } else {
+    var users = readTable_('Users');
+    var dbUser = users.filter(function(u){return getField_(u, 'email') === identifier || getField_(u, 'userId') === identifier;})[0];
+    if (!dbUser) return { success: false, error: '找不到此 Email/帳號' };
+    email = getField_(dbUser, 'email');
+    name = getField_(dbUser, 'name');
+    user = dbUser;
+  }
+
+  if (!email) return { success: false, error: '此帳號未設定 Email，請聯絡領袖手動重設密碼。' };
+
+  var newPw = Math.random().toString(36).slice(-8);
+  var userId = getField_(user, 'userId') || getField_(user, 'memberId');
+  
+  if (loginType === 'member') {
+    updateCellByName_('Members', 'memberId', userId, 'password', newPw);
+  } else {
+    updateCellByName_('Users', 'userId', userId, 'password', newPw);
+  }
+
+  try {
+    MailApp.sendEmail({
+      to: email,
+      subject: '[' + troopName + '] 密碼重設通知',
+      body: name + ' 您好，\n\n您的帳號密碼已重設。\n新密碼為：' + newPw + '\n\n請登入後立即更改密碼。\n\n' + troopName
+    });
+    writeAudit_('system', 'forgotPassword', loginType === 'member' ? 'Members' : 'Users', userId, 'sent to ' + email);
+    return { success: true, message: '新密碼已傳送到您的登記 Email (' + email + ')。' };
+  } catch (e) {
+    return { success: false, error: '郵件發送失敗：' + String(e) };
+  }
+}
+
 
 // ==================== 申請 ====================
 
@@ -1568,7 +1683,7 @@ function handleCreateMember_(p) {
 }
 
 function handleUpdateMember_(p) {
-  var fields = ['ymNumber', 'password', 'name', 'branchId', 'patrolId', 'patrolRole', 'dateOfBirth', 'parentUserId', 'emergencyContactName', 'emergencyContactPhone', 'active'];
+  var fields = ['ymNumber', 'password', 'name', 'email', 'branchId', 'patrolId', 'patrolRole', 'dateOfBirth', 'parentUserId', 'emergencyContactName', 'emergencyContactPhone', 'active'];
   fields.forEach(function (f) {
     if (p[f] !== undefined && p[f] !== null) {
       updateCellByName_('Members', 'memberId', p.memberId, f, p[f]);
@@ -1608,6 +1723,7 @@ function handleCreateEvent_(p) {
     eventId: id, title: p.title || '', scope: scope, branchId: p.branchId || '',
     date: p.date || '', location: p.location || '', kind: p.kind || 'activity',
     status: p.status || 'draft', source: p.source || '手動新增', fee: p.fee || '',
+    paymentUrl: p.paymentUrl || '', dutyPatrol: p.dutyPatrol || '',
     targetMemberIds: targets, createdBy: p.operatedBy || '', createdAt: now_(), note: p.note || ''
   });
   writeAudit_(p.operatedBy || 'system', 'createEvent', 'Events', id, p.title || '');
@@ -1621,7 +1737,7 @@ function handlePublishEvent_(p) {
 }
 
 function handleUpdateEvent_(p) {
-  var fields = ['title', 'scope', 'branchId', 'date', 'location', 'kind', 'status', 'source', 'fee', 'targetMemberIds', 'note'];
+  var fields = ['title', 'scope', 'branchId', 'date', 'location', 'kind', 'status', 'source', 'fee', 'paymentUrl', 'dutyPatrol', 'targetMemberIds', 'note'];
   var changed = [];
   fields.forEach(function (f) {
     if (p[f] !== undefined && p[f] !== null) {
@@ -1818,7 +1934,8 @@ function handleImportBookmark_(p) {
       eventId: convertedEventId, title: p.title || '', scope: 'troop', branchId: '',
       date: p.internalDeadline || p.officialDeadline || '', location: '待定',
       kind: 'notice_troop_participation', status: 'published', source: '圖書館引入',
-      fee: p.fee || '', targetMemberIds: targets, createdBy: p.operatedBy || '',
+      fee: p.fee || '', paymentUrl: p.paymentUrl || '',
+      targetMemberIds: targets, createdBy: p.operatedBy || '',
       createdAt: now_(), note: '由圖書館引入'
     });
   }
@@ -1831,6 +1948,7 @@ function handleImportBookmark_(p) {
     circularDate: p.date || p.circularDate || '',
     sourceUrl: p.sourceUrl || '',
     attachmentUrl: p.attachmentUrl || p.url || '',
+    paymentUrl: p.paymentUrl || '',
     officialDeadline: p.officialDeadline || p.deadline || '',
     internalDeadline: p.internalDeadline || '',
     mode: mode,
@@ -1876,7 +1994,7 @@ function handleCreateRegularMeeting_(p) {
 }
 
 function handleToggleMeetingCancel_(p) {
-  var branchId = p.branchId, date = p.date;
+  var branchId = p.branchId, date = p.date, type = p.type || 'cancelled';
   var sh = getSheet_('CancelledMeetings');
   var data = sh.getDataRange().getValues();
   var headers = data[0].map(function (h) { return String(h).trim(); });
@@ -1890,10 +2008,10 @@ function handleToggleMeetingCancel_(p) {
     }
   }
   appendRowByHeaders_('CancelledMeetings', {
-    cancelId: uid_('cm'), branchId: branchId, date: date,
+    cancelId: uid_('cm'), branchId: branchId, date: date, type: type,
     reason: p.reason || '', markedBy: p.operatedBy || '', markedAt: now_()
   });
-  writeAudit_(p.operatedBy || 'system', 'cancelMeeting', 'CancelledMeetings', branchId + ' ' + date, p.reason || '');
+  writeAudit_(p.operatedBy || 'system', 'cancelMeeting', 'CancelledMeetings', branchId + ' ' + date, type + ': ' + (p.reason || ''));
   return { success: true };
 }
 
@@ -2108,13 +2226,81 @@ function autoRepairParentLinks_() {
 // ==================== Library Bookmark Update / Delete ====================
 
 function handleUpdateBookmark_(p) {
-  var fields = ['title', 'source', 'region', 'circularDate', 'sourceUrl', 'attachmentUrl', 'officialDeadline', 'internalDeadline', 'mode', 'activityType', 'targetText', 'eligibility', 'fee', 'branchTags', 'audienceTags', 'status', 'note', 'convertedEventId'];
+  var fields = ['title', 'source', 'region', 'circularDate', 'sourceUrl', 'attachmentUrl', 'paymentUrl', 'officialDeadline', 'internalDeadline', 'mode', 'activityType', 'targetText', 'eligibility', 'fee', 'branchTags', 'audienceTags', 'status', 'note', 'convertedEventId'];
   fields.forEach(function (f) {
     if (p[f] !== undefined && p[f] !== null && p[f] !== '') {
       updateCellByName_('LibraryBookmarks', 'bookmarkId', p.bookmarkId, f, p[f]);
     }
   });
   writeAudit_(p.operatedBy || 'system', 'updateBookmark', 'LibraryBookmarks', p.bookmarkId, '');
+  return { success: true };
+}
+
+// ==================== Meetings ====================
+
+function handleCreateMeeting_(p) {
+  var id = uid_('mt');
+  appendRowByHeaders_('Meetings', {
+    meetingId: id, title: p.title || '', type: p.type || 'agenda',
+    date: p.date || '', startTime: p.startTime || '', endTime: p.endTime || '',
+    location: p.location || '', targetRoles: p.targetRoles || '',
+    branchId: p.branchId || '', url: p.url || '', status: 'draft',
+    createdBy: p.operatedBy || '', createdAt: now_(), note: p.note || ''
+  });
+  writeAudit_(p.operatedBy || 'system', 'createMeeting', 'Meetings', id, p.title || '');
+  return { success: true };
+}
+
+function handleUpdateMeeting_(p) {
+  var fields = ['title', 'type', 'date', 'startTime', 'endTime', 'location', 'targetRoles', 'branchId', 'url', 'status', 'note'];
+  fields.forEach(function (f) {
+    if (p[f] !== undefined && p[f] !== null) {
+      updateCellByName_('Meetings', 'meetingId', p.meetingId, f, p[f]);
+    }
+  });
+  writeAudit_(p.operatedBy || 'system', 'updateMeeting', 'Meetings', p.meetingId, '');
+  return { success: true };
+}
+
+function handleDeleteMeeting_(p) {
+  var idx = findRowIndexById_('Meetings', 'meetingId', p.meetingId);
+  if (idx < 0) return { success: false, error: '找不到會議' };
+  getSheet_('Meetings').deleteRow(idx + 1);
+  writeAudit_(p.operatedBy || 'system', 'deleteMeeting', 'Meetings', p.meetingId, '');
+  return { success: true };
+}
+
+function handlePublishMeeting_(p) {
+  updateCellByName_('Meetings', 'meetingId', p.meetingId, 'status', 'published');
+  writeAudit_(p.operatedBy || 'system', 'publishMeeting', 'Meetings', p.meetingId, '');
+  return { success: true };
+}
+
+function handleUpdateUserPermissions_(p) {
+  var userId = p.targetUserId;
+  var features = parseArray_(p.features);
+  
+  // Clear existing permissions for this user
+  var sh = getSheet_('UserPermissions');
+  var data = sh.getDataRange().getValues();
+  var headers = data[0].map(function (h) { return String(h).trim(); });
+  var uidIdx = findColIndex_(headers, 'userId');
+  
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (String(data[i][uidIdx]) === userId) {
+      sh.deleteRow(i + 1);
+    }
+  }
+  
+  // Add new permissions
+  features.forEach(function(f) {
+    appendRowByHeaders_('UserPermissions', {
+      userId: userId, feature: f, granted: 'true',
+      grantedBy: p.operatedBy || 'system', grantedAt: now_()
+    });
+  });
+  
+  writeAudit_(p.operatedBy || 'system', 'updateUserPermissions', 'Users', userId, features.join(','));
   return { success: true };
 }
 
