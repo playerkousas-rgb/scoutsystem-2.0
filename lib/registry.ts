@@ -99,12 +99,13 @@ export function resolvePlugins(registry: Registry, unitCode: string): ResolvedPl
   });
 }
 
-export function buildPluginUrl(plugin: ResolvedPlugin, unitCode: string, role: Role, embed = false) {
+export function buildPluginUrl(plugin: ResolvedPlugin, unitCode: string, role: Role, embed = false, ymis?: string) {
   if (!plugin.resolvedUrl) return '';
   const url = new URL(plugin.resolvedUrl, typeof window !== 'undefined' ? window.location.origin : 'https://placeholder.local');
   url.searchParams.set('u', unitCode);
   url.searchParams.set('role', role);
   url.searchParams.set('from', 'portal');
   if (embed) url.searchParams.set('embed', '1');
+  if (ymis) url.searchParams.set('ymis', ymis);
   return url.toString();
 }

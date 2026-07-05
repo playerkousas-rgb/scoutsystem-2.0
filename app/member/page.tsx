@@ -4,6 +4,7 @@ import { AppState, loadState, visibleEventsForMember, replyStatus } from '@/lib/
 import { apiSetReply } from '@/lib/api';
 import { getSession } from '@/lib/session';
 import Collapsible from '@/components/Collapsible';
+import PluginIframeCard from '@/components/PluginCard';
 
 export default function Member(){
   const [s,setS]=useState<AppState|null>(null);const [err,setErr]=useState('');
@@ -21,6 +22,13 @@ export default function Member(){
   }
   const events=visibleEventsForMember(s,member);
   
+  // Filter plugins by role and branch if needed
+  const visiblePlugins = s.plugins.filter(p => {
+    // Example: vs_badge_tracker only for Venture (b4)
+    if (p.id === 'vs_badge_tracker' && member.branchId !== 'b4') return false;
+    return true;
+  });
+  
   return (
     <div className="stack">
       <section className="hero">
@@ -30,6 +38,19 @@ export default function Member(){
       </section>
 
       {err&&<p className="badge red">{err}</p>}
+
+      {visiblePlugins.length > 0 && (
+        <section className="grid" style={{ marginBottom: '2rem' }}>
+          {visiblePlugins.map(p => (
+            <PluginIframeCard 
+              key={p.id} 
+              plugin={p} 
+              unitCode={session?.troopCode || ''} 
+              settings={s.pluginSettings?.find(ps => ps.pluginId === p.id)}
+            />
+          ))}
+        </section>
+      )}
 
       <Collapsible title="📢 活動與集會" defaultOpen={true}>
         <p className="muted">{adult?'你已 18 歲或以上，可自行 ✅ / ❌。':'你未滿 18 歲，可按 ❤️ 表示有興趣；參加 / 不參加由家長決定。'}</p>

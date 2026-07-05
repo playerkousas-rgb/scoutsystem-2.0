@@ -207,6 +207,9 @@ function getInitialSheets_() {
     Plugins: [
       ['cardId', 'title', 'icon', 'tier', 'url', 'embed', 'minRole', 'enabled', 'order', 'note']
     ],
+    PluginSettings: [
+      ['pluginId', 'frontendUrl', 'backendUrl', 'apiKey', 'note']
+    ],
     AuditLogs: [
       ['logId', 'userId', 'action', 'entity', 'entityId', 'createdAt', 'detail']
     ]
@@ -758,6 +761,26 @@ function mapAudits_() {
   }).reverse();
 }
 
+function mapPlugins_() {
+  return readTable_('Plugins').map(function (r) {
+    return {
+      id: getField_(r, 'cardId'), title: getField_(r, 'title'), icon: getField_(r, 'icon'),
+      tier: Number(getField_(r, 'tier')), url: getField_(r, 'url'),
+      embed: parseBool_(getField_(r, 'embed')), minRole: getField_(r, 'minRole'),
+      enabled: parseBool_(getField_(r, 'enabled')), order: Number(getField_(r, 'order')) || 0
+    };
+  });
+}
+
+function mapPluginSettings_() {
+  return readTable_('PluginSettings').map(function (r) {
+    return {
+      pluginId: getField_(r, 'pluginId'), frontendUrl: getField_(r, 'frontendUrl'),
+      backendUrl: getField_(r, 'backendUrl'), apiKey: getField_(r, 'apiKey')
+    };
+  });
+}
+
 function mapConfig_() {
   var cfg = {};
   readTable_('SystemConfig').forEach(function (r) { var k = getField_(r, 'key'); if (k) cfg[k] = getField_(r, 'value'); });
@@ -815,6 +838,8 @@ function buildDashboard(userId) {
   var allRegularMeetings = mapRegularMeetings_();
   var allCancelledMeetings = mapCancelledMeetings_();
   var allMeetings = mapMeetings_();
+  var allPlugins = mapPlugins_();
+  var allPluginSettings = mapPluginSettings_();
   var allApplications = mapApplications_();
   var allAudits = mapAudits_();
   var config = mapConfig_();
@@ -825,7 +850,9 @@ function buildDashboard(userId) {
     announcements: [], announcementPdfs: [],
     regularMeetings: [], cancelledMeetings: [],
     meetings: [],
-    plugins: [], audits: [], config: config,
+    plugins: [],
+    pluginSettings: [],
+    audits: [], config: config,
     userFeatures: []  // 當前用戶的功能權限
   };
   // Fill userFeatures for current user
@@ -897,6 +924,8 @@ function buildDashboard(userId) {
     state.regularMeetings = allRegularMeetings;
     state.cancelledMeetings = allCancelledMeetings;
     state.meetings = allMeetings;
+    state.plugins = allPlugins;
+    state.pluginSettings = allPluginSettings;
     state.audits = allAudits;
 
   } else if (role === 'group_leader' || role === 'branch_leader') {
@@ -920,6 +949,8 @@ function buildDashboard(userId) {
       return true; // Simplified for now
     });
     state.audits = allAudits.filter(function (a) { return a.userId === userId; });
+    state.plugins = allPlugins.filter(function (p) { return p.enabled; });
+    state.pluginSettings = allPluginSettings; // Leaders usually need these for Tier 3 cards
 
   } else if (role === 'coach') {
     // 教練員：所屬支部，無申請管理
@@ -1010,9 +1041,9 @@ function buildDashboard(userId) {
 
 var FEATURE_DEFAULTS = {
   // admin 以上預設全部有
-  'admin': ['branches','members','applications','events','registrations','library_import','notices','users','settings','audit','calendar'],
-  'troop_super': ['branches','members','applications','events','registrations','library_import','notices','users','settings','audit','calendar'],
-  'super_admin': ['branches','members','applications','events','registrations','library_import','notices','users','settings','audit','calendar'],
+  'admin': ['branches','members','applications','events','registrations','library_import','notices','users','settings','plugins','audit','calendar'],
+  'troop_super': ['branches','members','applications','events','registrations','library_import','notices','users','settings','plugins','audit','calendar'],
+  'super_admin': ['branches','members','applications','events','registrations','library_import','notices','users','settings','plugins','audit','calendar'],
   // 團長：自己支部全部
   'group_leader': ['members','applications','events','registrations','library_import','notices','calendar'],
   // 支部領袖：自己支部
@@ -1234,6 +1265,8 @@ function doGet(e) {
       case 'revokeFeature': return wrap_(handleRevokeFeature_(p), p);
       case 'getUserFeatures': return json(handleGetUserFeatures_(p));
       case 'saveConfig': return wrap_(handleSaveConfig_(p), p);
+      case 'savePluginSetting': return wrap_(handleSavePluginSetting_(p), p);
+      case 'togglePluginStatus': return wrap_(handleTogglePluginStatus_(p), p);
       case 'addAnnouncement': return wrap_(addAnnouncement(p), p);
       case 'getAnnouncements': return json(getAnnouncements(p));
       case 'deleteAnnouncement': return wrap_(deleteAnnouncement(p), p);
@@ -2020,6 +2053,63 @@ function handleToggleMeetingCancel_(p) {
 function handleSaveConfig_(p) {
   setConfigValue_(p.key, p.value);
   writeAudit_(p.operatedBy || 'system', 'saveConfig', 'SystemConfig', p.key, '');
+  return { success: true };
+}
+
+function handleSavePluginSetting_(p) {
+  var pluginId = p.pluginId;
+  if (!pluginId) return { success: false, error: 'Missing pluginId' };
+  
+  var existing = findRowIndexById_('PluginSettings', 'pluginId', pluginId);
+  var fields = {
+    pluginId: pluginId,
+    frontendUrl: p.frontendUrl || '',
+    backendUrl: p.backendUrl || '',
+    apiKey: p.apiKey || '',
+    note: p.note || ''
+  };
+
+  if (existing >= 0) {
+    updateCellByName_('PluginSettings', 'pluginId', pluginId, 'frontendUrl', fields.frontendUrl);
+    updateCellByName_('PluginSettings', 'pluginId', pluginId, 'backendUrl', fields.backendUrl);
+    updateCellByName_('PluginSettings', 'pluginId', pluginId, 'apiKey', fields.apiKey);
+    updateCellByName_('PluginSettings', 'pluginId', pluginId, 'note', fields.note);
+  } else {
+    appendRowByHeaders_('PluginSettings', fields);
+  }
+
+  // Also ensure it's in the Plugins table so it shows up in dashboard
+  var plugIdx = findRowIndexById_('Plugins', 'cardId', pluginId);
+  if (plugIdx < 0) {
+    appendRowByHeaders_('Plugins', {
+      cardId: pluginId,
+      title: p.title || pluginId,
+      icon: p.icon || '🧩',
+      tier: p.tier || 3,
+      url: p.frontendUrl || '',
+      embed: true,
+      minRole: 'member',
+      enabled: true
+    });
+  }
+  
+  writeAudit_(p.operatedBy || 'system', 'savePluginSetting', 'PluginSettings', pluginId, '');
+  return { success: true };
+}
+
+function handleTogglePluginStatus_(p) {
+  var pluginId = p.pluginId;
+  var plugIdx = findRowIndexById_('Plugins', 'cardId', pluginId);
+  if (plugIdx < 0) return { success: false, error: 'Plugin not found' };
+  
+  var sh = getSheet_('Plugins');
+  var data = sh.getDataRange().getValues();
+  var headers = data[0].map(function (h) { return String(h).trim(); });
+  var enabledIdx = findColIndex_(headers, 'enabled');
+  var current = parseBool_(data[plugIdx][enabledIdx]);
+  
+  updateCellByName_('Plugins', 'cardId', pluginId, 'enabled', String(!current));
+  writeAudit_(p.operatedBy || 'system', 'togglePlugin', 'Plugins', pluginId, 'enabled=' + !current);
   return { success: true };
 }
 

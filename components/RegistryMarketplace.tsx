@@ -46,8 +46,9 @@ export function MarketplacePanel() {
 
 function PluginCard({ plugin, unitCode, role }: { plugin: ResolvedPlugin; unitCode: string; role: Role }) {
   const [minRole, setMinRole] = useState<Role>(plugin.minRole);
+  const session = getSession();
   const visible = visibleRolesFromMin(minRole);
-  const target = buildPluginUrl(plugin, unitCode, role, plugin.embed);
+  const target = buildPluginUrl(plugin, unitCode, role, plugin.embed, session?.memberId);
   return <div className="card stack">
     <div className="row" style={{ justifyContent: 'space-between' }}>
       <span className={`badge ${plugin.tier === 2 ? 'green' : 'purple'}`}>第 {plugin.tier} 級</span>
@@ -85,12 +86,13 @@ export function ConnectorPanel() {
     fetchRegistry().then(r => setRegistry(r.registry));
   }, []);
   const list = useMemo(() => registry ? resolvePlugins(registry, unitCode) : [], [registry, unitCode]);
+  const session = getSession();
   return <div className="stack">
     <section className="card row" style={{ justifyContent: 'space-between' }}>
       <div><strong>目前單位：</strong>{unitCode} · <span className="muted">開啟元件會帶 u={unitCode}</span></div>
       <span className="badge gold">Registry Live</span>
     </section>
-    <section className="card"><table className="table"><thead><tr><th>元件</th><th>級別</th><th>安裝</th><th>解析 URL</th><th>測試</th></tr></thead><tbody>{list.map(p=>{const url=buildPluginUrl(p,unitCode,role,p.embed);return <tr key={p.id}><td>{p.icon} {p.title}<br/><span className="muted">{p.id}</span></td><td>第 {p.tier} 級</td><td>{p.installed?'✅':'—'} {p.available?'':'需部署'}</td><td style={{maxWidth:360,wordBreak:'break-all'}}>{p.resolvedUrl||'未設定'}</td><td>{url?<a className="btn" href={url} target="_blank">開啟</a>:<span className="badge red">不可用</span>}</td></tr>})}</tbody></table></section>
+    <section className="card"><table className="table"><thead><tr><th>元件</th><th>級別</th><th>安裝</th><th>解析 URL</th><th>測試</th></tr></thead><tbody>{list.map(p=>{const url=buildPluginUrl(p,unitCode,role,p.embed,session?.memberId);return <tr key={p.id}><td>{p.icon} {p.title}<br/><span className="muted">{p.id}</span></td><td>第 {p.tier} 級</td><td>{p.installed?'✅':'—'} {p.available?'':'需部署'}</td><td style={{maxWidth:360,wordBreak:'break-all'}}>{p.resolvedUrl||'未設定'}</td><td>{url?<a className="btn" href={url} target="_blank">開啟</a>:<span className="badge red">不可用</span>}</td></tr>})}</tbody></table></section>
     <section className="card"><h3>主系統開啟合約</h3><pre className="code">?u={unitCode}&role={role}&from=portal{`&embed=1`}</pre><p className="muted">第 3 級元件真正 URL 由 registry 的 units.endpoints 解析；不把空 URL 寫入卡片。</p></section>
   </div>
 }

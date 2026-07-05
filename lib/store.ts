@@ -14,10 +14,11 @@ export type AnnouncementPdf = { id:string; name:string; url:string; updatedAt?:s
 export type RegularMeeting = { id:string; branchId:string; title:string; weekday:0|1|2|3|4|5|6; startTime:string; endTime:string; location:string; enabled:boolean };
 export type CancelledMeeting = { id:string; branchId:string; date:string; reason?:string; markedBy:string; markedAt:string };
 export type Announcement = { id:string; title:string; source?:string; month?:string; publishDate?:string; branchTags:string[]; folderUrl?:string; documentUrl?:string; rawText?:string; createdAt:string; status:'published'|'archived' };
-export type PluginCard = { id:string; title:string; icon:string; tier:2|3; url:string; embed:boolean; minRole:Role; enabled:boolean; order:number };
+export type PluginCard = { id:string; title:string; icon:string; tier:2|3; url:string; embed:boolean; minRole:Role; enabled:boolean; order:number; needsUnitBackend?:boolean };
+export type PluginSetting = { pluginId:string; frontendUrl?:string; backendUrl?:string; apiKey?:string };
 export type Meeting = { id:string; title:string; type:'agenda'|'minutes'; date:string; startTime?:string; endTime?:string; location?:string; targetRoles?:string[]; branchId?:string; url?:string; status:'draft'|'published' };
 export type Audit = { id:string; userId:string; action:string; entity:string; entityId:string; createdAt:string; detail:string };
-export type AppState = { patrols:Patrol[]; users:User[]; members:Member[]; applications:Application[]; events:EventItem[]; replies:Reply[]; bookmarks:Bookmark[]; announcements:Announcement[]; announcementPdfs:AnnouncementPdf[]; regularMeetings:RegularMeeting[]; cancelledMeetings:CancelledMeeting[]; meetings:Meeting[]; plugins:PluginCard[]; audits:Audit[]; config:Record<string,string>; userFeatures?:string[] };
+export type AppState = { patrols:Patrol[]; users:User[]; members:Member[]; applications:Application[]; events:EventItem[]; replies:Reply[]; bookmarks:Bookmark[]; announcements:Announcement[]; announcementPdfs:AnnouncementPdf[]; regularMeetings:RegularMeeting[]; cancelledMeetings:CancelledMeeting[]; meetings:Meeting[]; plugins:PluginCard[]; pluginSettings?:PluginSetting[]; audits:Audit[]; config:Record<string,string>; userFeatures?:string[] };
 
 // ==================== 載入（API） ====================
 

@@ -477,15 +477,27 @@ ScoutSystem GS 完全不碰這個。
 ### 7.3 插件開啟合約
 
 ```
-?u=0082&role=admin&from=portal&embed=1
+?u=0082&role=admin&from=portal&embed=1&ymis=1234567890
 
-u = 旅團號（純數字）
-  純數字 → 旅團
-  字母 → 區
+u = 旅團代碼
 role = 使用者角色
 from = portal
-embed = 1（如果 iframe 內嵌）
+embed = 1（嵌入模式）
+ymis = 成員 YMIS（如果是成員登入）
+backend = 單位設定的 Apps Script URL (僅第3級)
+apikey = 單位設定的 API Key (僅第3級)
 ```
+
+---
+
+## 8. 單位元件設定 (Tier 3)
+
+對於第 3 級元件（如：進度性獎章追蹤），各旅團可自定義其後端。管理員可在「系統設定」→「單位元件設定」中填寫每個元件的：
+- 前端 URL (選填)
+- 後端 Apps Script URL
+- API Key (安全鎖)
+
+這些資訊會儲存在 GS 的 `PluginSettings` 表中。
 
 ---
 

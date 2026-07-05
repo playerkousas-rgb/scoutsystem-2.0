@@ -218,6 +218,13 @@ export function apiSaveConfig(key: string, value: string) {
   return apiMutate('saveConfig', { key, value });
 }
 
+export function apiSavePluginSetting(p: { pluginId: string; title?: string; icon?: string; tier?: number; frontendUrl?: string; backendUrl?: string; apiKey?: string; note?: string }) {
+  return apiMutate('savePluginSetting', p as any);
+}
+export function apiTogglePluginStatus(pluginId: string) {
+  return apiMutate('togglePluginStatus', { pluginId });
+}
+
 // ==================== Meetings ====================
 
 export function apiCreateMeeting(p: { title: string; type: 'agenda' | 'minutes'; date: string; startTime?: string; endTime?: string; location?: string; targetRoles?: string; branchId?: string; url?: string }) {
