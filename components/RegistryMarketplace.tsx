@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { ROLE_LABEL, ROLE_ORDER, Role } from '@/lib/model';
 import { buildPluginUrl, fetchRegistry, Registry, REGISTRY_URL, resolvePlugins, ResolvedPlugin } from '@/lib/registry';
 import { getSession } from '@/lib/session';
+import { apiSavePluginSetting } from '@/lib/api';
+
 function visibleRolesFromMin(minRole: Role) {
   const idx = ROLE_ORDER.indexOf(minRole);
   return ROLE_ORDER.slice(Math.max(0, idx));
@@ -68,7 +70,12 @@ function PluginCard({ plugin, unitCode, role }: { plugin: ResolvedPlugin; unitCo
       <p className="muted" style={{ marginBottom: 0 }}>下級可見時，上級自動可見；例如開放給成員，家長、領袖、團長、管理員亦可見。</p>
     </div>
     <div className="row">
-      <button className="btn primary" disabled={!plugin.available} onClick={()=>{ alert(`「${plugin.title}」會由 registry 統一管理；此處為展示。正式接入請由轉駁器 registry 設定 units.endpoints。`); }}>{plugin.available ? '加入本旅控制台' : '不能安裝'}</button>
+      <button className="btn primary" disabled={!plugin.available} onClick={async ()=>{
+        try {
+          await apiSavePluginSetting({ pluginId: plugin.id, title: plugin.title, icon: plugin.icon, tier: plugin.tier });
+          alert('✅ 已加入控制台');
+        } catch(e: any) { alert(e.message); }
+      }}>{plugin.available ? '加入本旅控制台' : '不能安裝'}</button>
       {plugin.available && target && <a className="btn" href={target} target={plugin.embed ? '_self' : '_blank'}>測試開啟</a>}
     </div>
     {target && <pre className="code">{target}</pre>}
