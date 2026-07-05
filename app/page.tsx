@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { FeatureCard } from '@/components/Cards';
 import { activeTroops } from '@/lib/troops';
 import { useEffect, useState } from 'react';
+import { AppState, loadState } from '@/lib/store';
 
 export default function Home(){
   const [selectedKey,setSelectedKey]=useState('');
