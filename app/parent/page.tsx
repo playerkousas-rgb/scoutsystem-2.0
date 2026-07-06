@@ -61,10 +61,30 @@ export default function Parent(){
                         </div>
                       )}
                     </div>
-                    <div className="row">
-                      <span className="badge gold">{r?.type||'未回覆'}</span>
-                      <button className="btn primary" disabled={loadingId===e.id+c.id} onClick={()=>respond(e.id,c.id,'registered')}>✅ 參加</button>
-                      <button className="btn" disabled={loadingId===e.id+c.id} onClick={()=>respond(e.id,c.id,'declined')}>❌ 不參加</button>
+                    <div className="row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                      {(() => {
+                        const st = r?.type;
+                        if (st === 'registered') return <span className="badge green" style={{fontSize: '0.85rem', padding: '4px 8px', fontWeight: 'bold'}}>✅ 狀態：已報名參加</span>;
+                        if (st === 'declined') return <span className="badge red" style={{fontSize: '0.85rem', padding: '4px 8px', fontWeight: 'bold'}}>❌ 狀態：已婉拒參加</span>;
+                        if (st === 'interested') return <span className="badge gold" style={{fontSize: '0.85rem', padding: '4px 8px', fontWeight: 'bold'}}>❤️ 狀態：子女有興趣</span>;
+                        return <span className="badge" style={{fontSize: '0.85rem', padding: '4px 8px', background: '#fff9c4', color: '#555', border: '1px solid #fbc02d'}}>⚠️ 狀態：尚未回覆</span>;
+                      })()}
+                      <button
+                        className="btn"
+                        disabled={loadingId===e.id+c.id}
+                        style={r?.type === 'registered' ? { background: '#2e7d32', color: '#fff', border: '2px solid #1b5e20', boxShadow: '0 0 8px rgba(46,125,50,0.5)', fontWeight: 'bold' } : { background: '#f5f5f5', color: '#333', border: '1px solid #ccc', opacity: r?.type ? 0.65 : 1 }}
+                        onClick={()=>respond(e.id,c.id,'registered')}
+                      >
+                        {r?.type === 'registered' ? '【已為子女確認】✅ 參加' : '✅ 確認參加'}
+                      </button>
+                      <button
+                        className="btn"
+                        disabled={loadingId===e.id+c.id}
+                        style={r?.type === 'declined' ? { background: '#d32f2f', color: '#fff', border: '2px solid #b71c1c', boxShadow: '0 0 8px rgba(211,47,47,0.5)', fontWeight: 'bold' } : { background: '#f5f5f5', color: '#333', border: '1px solid #ccc', opacity: r?.type ? 0.65 : 1 }}
+                        onClick={()=>respond(e.id,c.id,'declined')}
+                      >
+                        {r?.type === 'declined' ? '【已為子女婉拒】❌ 不參加' : '❌ 不參加'}
+                      </button>
                     </div>
                   </div>
                 );

@@ -17,6 +17,7 @@ export default function Page(){
   const [name,setName]=useState('');const [ym,setYm]=useState('');const [branch,setBranch]=useState('b3');
   const [patrol,setPatrol]=useState('');const [parent,setParent]=useState('');const [dob,setDob]=useState('');
   const [phone,setPhone]=useState('');const [emergencyName,setEmergencyName]=useState('');const [memberPw,setMemberPw]=useState('');
+  const [specialRole,setSpecialRole]=useState('');
   // edit form
   const [eName,setEName]=useState('');const [eYm,setEYm]=useState('');const [eBranch,setEBranch]=useState('b3');
   const [ePatrol,setEPatrol]=useState('');const [eDob,setEDob]=useState('');const [ePhone,setEPhone]=useState('');
@@ -31,8 +32,8 @@ export default function Page(){
     if(!name||!ym){setErr('請填姓名及 YMIS');return;}
     setErr('');setAdding(true);
     try{
-      const fresh=await apiCreateMember({name,ymNumber:ym,branchId:branch,patrolId:patrol,dateOfBirth:dob,parentUserId:parent||undefined,emergencyContactPhone:phone,emergencyContactName:emergencyName,password:memberPw||ym});
-      setS(fresh);setName('');setYm('');setPatrol('');setParent('');setDob('');setPhone('');setEmergencyName('');setMemberPw('');setShowAdd(false);
+      const fresh=await apiCreateMember({name,ymNumber:ym,branchId:branch,patrolId:patrol,specialRole:specialRole||undefined,dateOfBirth:dob,parentUserId:parent||undefined,emergencyContactPhone:phone,emergencyContactName:emergencyName,password:memberPw||ym});
+      setS(fresh);setName('');setYm('');setPatrol('');setParent('');setDob('');setPhone('');setEmergencyName('');setMemberPw('');setSpecialRole('');setShowAdd(false);
     }catch(e:any){setErr(e.message)}finally{setAdding(false)}
   }
 
@@ -91,6 +92,21 @@ export default function Page(){
         <input value={memberPw} onChange={e=>setMemberPw(e.target.value)} placeholder="登入密碼（預設=編號）"/>
         <select value={branch} onChange={e=>{setBranch(e.target.value);setPatrol('')}}>{branches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select>
         <select value={patrol} onChange={e=>setPatrol(e.target.value)}><option value="">不適用 / 未分隊</option>{s.patrols.filter(p=>p.branchId===branch&&p.enabled).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>
+        <select value={specialRole} onChange={e=>setSpecialRole(e.target.value)}>
+          <option value="">特別身份(無)</option>
+          {branch === 'b4' && (
+            <>
+              <option value="執行委員會主席">執行委員會主席</option>
+              <option value="執行委員會委員">執行委員會委員</option>
+            </>
+          )}
+          {branch === 'b5' && (
+            <>
+              <option value="管理委員會主席">管理委員會主席</option>
+              <option value="管理委員會委員">管理委員會委員</option>
+            </>
+          )}
+        </select>
         <input type="date" value={dob} onChange={e=>setDob(e.target.value)} placeholder="出生日期"/>
         <input value={emergencyName} onChange={e=>setEmergencyName(e.target.value)} placeholder="緊急聯絡人姓名"/>
         <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="緊急聯絡電話"/>

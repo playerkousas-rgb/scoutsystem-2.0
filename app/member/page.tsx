@@ -88,12 +88,39 @@ export default function Member(){
                       </div>
                     )}
                   </div>
-                  <div className="row">
-                    <span className="badge gold">{r?.type||'未回覆'}</span>
-                    <button className="btn" disabled={loadingId===e.id+'interested'} onClick={()=>act(e.id,'interested')}>❤️ 有興趣</button>
+                  <div className="row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                    {(() => {
+                      const st = r?.type;
+                      if (st === 'registered') return <span className="badge green" style={{fontSize: '0.85rem', padding: '4px 8px', fontWeight: 'bold'}}>✅ 狀態：已報名參加</span>;
+                      if (st === 'declined') return <span className="badge red" style={{fontSize: '0.85rem', padding: '4px 8px', fontWeight: 'bold'}}>❌ 狀態：已婉拒參加</span>;
+                      if (st === 'interested') return <span className="badge gold" style={{fontSize: '0.85rem', padding: '4px 8px', fontWeight: 'bold'}}>❤️ 狀態：有興趣</span>;
+                      return <span className="badge" style={{fontSize: '0.85rem', padding: '4px 8px', background: '#fff9c4', color: '#555', border: '1px solid #fbc02d'}}>⚠️ 狀態：尚未回覆</span>;
+                    })()}
+                    <button
+                      className="btn"
+                      disabled={loadingId===e.id+'interested'}
+                      style={r?.type === 'interested' ? { background: '#e91e63', color: '#fff', border: '2px solid #880e4f', boxShadow: '0 0 8px rgba(233,30,99,0.5)', fontWeight: 'bold' } : { opacity: r?.type ? 0.65 : 1 }}
+                      onClick={()=>act(e.id,'interested')}
+                    >
+                      {r?.type === 'interested' ? '【已點選】❤️ 有興趣' : '❤️ 有興趣'}
+                    </button>
                     {adult&&<>
-                      <button className="btn primary" disabled={loadingId===e.id+'registered'} onClick={()=>act(e.id,'registered')}>✅ 參加</button>
-                      <button className="btn" disabled={loadingId===e.id+'declined'} onClick={()=>act(e.id,'declined')}>❌ 不參加</button>
+                      <button
+                        className="btn"
+                        disabled={loadingId===e.id+'registered'}
+                        style={r?.type === 'registered' ? { background: '#2e7d32', color: '#fff', border: '2px solid #1b5e20', boxShadow: '0 0 8px rgba(46,125,50,0.5)', fontWeight: 'bold' } : { background: '#f5f5f5', color: '#333', border: '1px solid #ccc', opacity: r?.type ? 0.65 : 1 }}
+                        onClick={()=>act(e.id,'registered')}
+                      >
+                        {r?.type === 'registered' ? '【已報名】✅ 參加' : '✅ 參加'}
+                      </button>
+                      <button
+                        className="btn"
+                        disabled={loadingId===e.id+'declined'}
+                        style={r?.type === 'declined' ? { background: '#d32f2f', color: '#fff', border: '2px solid #b71c1c', boxShadow: '0 0 8px rgba(211,47,47,0.5)', fontWeight: 'bold' } : { background: '#f5f5f5', color: '#333', border: '1px solid #ccc', opacity: r?.type ? 0.65 : 1 }}
+                        onClick={()=>act(e.id,'declined')}
+                      >
+                        {r?.type === 'declined' ? '【已婉拒】❌ 不參加' : '❌ 不參加'}
+                      </button>
                     </>}
                   </div>
                 </div>
