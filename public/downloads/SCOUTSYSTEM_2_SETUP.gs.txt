@@ -169,13 +169,18 @@ function getInitialSheets_() {
     ],
     Patrols: [
       ['patrolId', 'branchId', 'name', 'shortName', 'leaderMemberId', 'deputyLeaderMemberId', 'memberIds', 'enabled', 'order', 'note'],
-      ['p1', 'b2', 'RED', 'R', '', '', '', true, 1, '幼童軍顏色分隊。'],
-      ['p2', 'b2', 'YELLOW', 'Y', '', '', '', true, 2, '幼童軍顏色分隊。'],
-      ['p3', 'b2', 'BLUE', 'B', '', '', '', true, 3, '幼童軍顏色分隊。'],
-      ['p4', 'b2', 'GREEN', 'G', '', '', '', true, 4, '幼童軍顏色分隊。'],
-      ['p5', 'b3', 'TIGER', 'T', '', '', '', true, 1, '童軍動物小隊。'],
-      ['p6', 'b3', 'SEAGULL', 'S', '', '', '', true, 2, '童軍動物小隊。'],
-      ['p7', 'b3', 'WOLF', 'W', '', '', '', true, 3, '童軍動物小隊。']
+      ['p1', 'b2', '紅', 'R', '', '', '', true, 1, '幼童軍顏色分隊。'],
+      ['p2', 'b2', '黃', 'Y', '', '', '', true, 2, '幼童軍顏色分隊。'],
+      ['p3', 'b2', '藍', 'B', '', '', '', true, 3, '幼童軍顏色分隊。'],
+      ['p4', 'b2', '白', 'W', '', '', '', true, 4, '幼童軍顏色分隊。'],
+      ['p5', 'b2', '灰', 'GY', '', '', '', true, 5, '幼童軍顏色分隊。'],
+      ['p6', 'b2', '綠', 'G', '', '', '', true, 6, '幼童軍顏色分隊。'],
+      ['p7', 'b2', '棕', 'BR', '', '', '', true, 7, '幼童軍顏色分隊。'],
+      ['p8', 'b2', '黑', 'BK', '', '', '', true, 8, '幼童軍顏色分隊。'],
+      ['p9', 'b2', '橙', 'O', '', '', '', true, 9, '幼童軍顏色分隊。'],
+      ['p10', 'b3', 'TIGER', 'T', '', '', '', true, 1, '童軍動物小隊。'],
+      ['p11', 'b3', 'SEAGULL', 'S', '', '', '', true, 2, '童軍動物小隊。'],
+      ['p12', 'b3', 'WOLF', 'W', '', '', '', true, 3, '童軍動物小隊。']
     ],
     FieldSettings: [
       ['key', 'label', 'enabled', 'required', 'note'],
@@ -600,7 +605,17 @@ function fmtTime_(v) {
     return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
   }
   var s = String(v);
-  // Robust check for HH:mm in various formats
+  
+  // Handle "2:00:00 PM" format
+  if (s.toLowerCase().indexOf('pm') >= 0 || s.toLowerCase().indexOf('am') >= 0) {
+    var d = new Date("1970/01/01 " + s);
+    if (!isNaN(d.getTime())) {
+      var h2 = d.getHours();
+      var m2 = d.getMinutes();
+      return (h2 < 10 ? '0' : '') + h2 + ':' + (m2 < 10 ? '0' : '') + m2;
+    }
+  }
+
   var match = s.match(/(\d{1,2}):(\d{1,2})/);
   if (match) {
     return match[1].padStart(2, '0') + ':' + match[2].padStart(2, '0');

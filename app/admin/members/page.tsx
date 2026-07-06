@@ -110,7 +110,26 @@ export default function Page(){
               <td><input value={eYm} onChange={e=>setEYm(e.target.value)} style={{width:100}}/></td>
               <td><select value={eBranch} onChange={e=>{setEBranch(e.target.value);setEPatrol('')}} style={{width:80}}>{branches.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}</select></td>
               <td><select value={ePatrol} onChange={e=>setEPatrol(e.target.value)} style={{width:80}}><option value="">不適用</option>{s.patrols.filter(p=>p.branchId===eBranch&&p.enabled).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></td>
-              <td><input value={eSpecialRole} onChange={e=>setESpecialRole(e.target.value)} placeholder="如：主席" style={{width:80}}/></td>
+              <td>
+                <select value={eSpecialRole} onChange={e=>setESpecialRole(e.target.value)} style={{width:100}}>
+                  <option value="">(無)</option>
+                  {eBranch === 'b4' && (
+                    <>
+                      <option value="執行委員會主席">主席</option>
+                      <option value="執行委員會委員">委員</option>
+                    </>
+                  )}
+                  {eBranch === 'b5' && (
+                    <>
+                      <option value="管理委員會主席">主席</option>
+                      <option value="管理委員會委員">委員</option>
+                    </>
+                  )}
+                  {!['b4', 'b5'].includes(eBranch) && <option value={eSpecialRole}>{eSpecialRole}</option>}
+                  <option value="custom">自定義...</option>
+                </select>
+                {eSpecialRole === 'custom' && <input value={eSpecialRole} onChange={e=>setESpecialRole(e.target.value)} placeholder="輸入身份"/>}
+              </td>
               <td>—</td>
               <td>
                 <input value={eEmail} onChange={e=>setEEmail(e.target.value)} placeholder="Email" style={{width:100,display:'block',marginBottom:4}}/>
