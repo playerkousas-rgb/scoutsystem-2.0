@@ -26,6 +26,7 @@ export default function Page(){
   const [ok,setOk]=useState('');
   const [permsUserId,setPermsUserId]=useState<string|null>(null);
   const [perms,setPerms]=useState<any[]>([]);
+  const [isMemberPerms, setIsMemberPerms] = useState(false);
   const session=getSession();
 
   useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message))},[]);
@@ -39,8 +40,10 @@ export default function Page(){
     try{const f=await apiCreateUser({name,email,password:pw,role,branchId:LEADER_ROLES.includes(role)?branchId:''});setS(f);setShowAdd(false);setName('');setEmail('')}catch(e:any){setErr(e.message)}finally{setLoading(false)}
   }
 
-  async function openPerms(userId:string){
-    setPermsUserId(userId);setLoading(true);
+  async function openPerms(userId:string, isMember = false){
+    setPermsUserId(userId);
+    setIsMemberPerms(isMember);
+    setLoading(true);
     try{
       const result=await apiGetUserFeatures(userId);
       if(result.success) setPerms(result.features||[]);
@@ -107,7 +110,7 @@ export default function Page(){
     {/* Permission panel */}
     {permsUserId&&(
       <section className="card stack">
-        <h3>功能權限 — {s.users.find(u=>u.id===permsUserId)?.name}</h3>
+        <h3>功能權限 — {isMemberPerms ? s.members.find(m=>m.id===permsUserId)?.name : s.users.find(u=>u.id===permsUserId)?.name}</h3>
         <p className="muted">勾選 = 授權該功能。不勾 = 使用角色預設權限。</p>
         <div className="grid">
           {perms.map(f=>(
@@ -123,33 +126,75 @@ export default function Page(){
       </section>
     )}
 
-    <section className="card"><table className="table">
-      <thead><tr><th>姓名</th><th>Email</th><th>角色</th><th>支部</th><th>狀態</th><th>操作</th></tr></thead>
-      <tbody>{filtered.map(u=>{
-        const perm=checkEditPermission(myRole,myBranchId,myUserId,u.role,u.branchId||'',u.id);
-        const canChangeRole=perm.canChangeRole&&assignable.includes(u.role);
-        const locked=u.techTest||u.role==='troop_super';
-        return <tr key={u.id}>
-          <td>{u.name}{u.techTest&&<span className="badge blue" style={{marginLeft:4}}>技術</span>}{u.role==='troop_super'&&<span className="badge gold" style={{marginLeft:4}}>超管</span>}</td>
-          <td>{u.email||'—'}</td>
-          <td>
-            {locked && <span className="badge blue">{ROLE_LABEL[u.role as Role]||u.role}</span>}
-            {!locked && canChangeRole && <select value={u.role} onChange={e=>changeRole(u.id,e.target.value as Role)} style={{fontSize:"0.9em"}}><option value={u.role}>{ROLE_LABEL[u.role as Role]}</option>{assignable.filter(r=>r!==u.role).map(r=><option key={r} value={r}>{ROLE_LABEL[r as Role]}</option>)}</select>}
-            {!locked && !canChangeRole && <span className="badge blue">{ROLE_LABEL[u.role as Role]||u.role}</span>}
-          </td>
-          <td>{branches.find(b=>b.id===u.branchId)?.short||'-'}</td>
-          <td>{u.approved?<span className="badge green">啟用</span>:<span className="badge red">停用</span>}</td>
-          <td>
-            {perm.canEdit?<>
-              {!locked&&u.role!=='member'&&<button className="btn" style={{fontSize:'0.8em',marginRight:4}} onClick={()=>openPerms(u.id)}>🔑 權限</button>}
+    <section className="card">
+      <div className="row" style={{marginBottom:'1rem'}}><h3>領袖與管理員</h3></div>
+      <table className="table">
+        <thead><tr><th>姓名</th><th>Email</th><th>角色</th><th>支部</th><th>狀態</th><th>操作</th></tr></thead>
+        <tbody>{filtered.filter(u => u.role !== 'member' && u.role !== 'parent').map(u=>{
+          const perm=checkEditPermission(myRole,myBranchId,myUserId,u.role,u.branchId||'',u.id);
+          const canChangeRole=perm.canChangeRole&&assignable.includes(u.role);
+          const locked=u.techTest||u.role==='troop_super';
+          return <tr key={u.id}>
+            <td>{u.name}{u.techTest&&<span className="badge blue" style={{marginLeft:4}}>技術</span>}{u.role==='troop_super'&&<span className="badge gold" style={{marginLeft:4}}>超管</span>}</td>
+            <td>{u.email||'—'}</td>
+            <td>
+              {locked && <span className="badge blue">{ROLE_LABEL[u.role as Role]||u.role}</span>}
+              {!locked && canChangeRole && <select value={u.role} onChange={e=>changeRole(u.id,e.target.value as Role)} style={{fontSize:"0.9em"}}><option value={u.role}>{ROLE_LABEL[u.role as Role]}</option>{assignable.filter(r=>r!==u.role).map(r=><option key={r} value={r}>{ROLE_LABEL[r as Role]}</option>)}</select>}
+              {!locked && !canChangeRole && <span className="badge blue">{ROLE_LABEL[u.role as Role]||u.role}</span>}
+            </td>
+            <td>{branches.find(b=>b.id===u.branchId)?.short||'-'}</td>
+            <td>{u.approved?<span className="badge green">啟用</span>:<span className="badge red">停用</span>}</td>
+            <td>
+              {perm.canEdit?<>
+                {!locked&&<button className="btn" style={{fontSize:'0.8em',marginRight:4}} onClick={()=>openPerms(u.id)}>🔑 權限</button>}
+                <button className="btn" style={{fontSize:'0.8em'}} onClick={()=>toggle(u.id)}>{u.approved?'停用':'啟用'}</button>
+                <button className="btn" style={{fontSize:'0.8em',marginLeft:4,color:'#d93025'}} onClick={()=>del(u.id,u.name)}>刪除</button>
+              </>:<span className="muted" style={{fontSize:'0.8em'}}>無權</span>}
+            </td>
+          </tr>;
+        })}</tbody>
+      </table>
+    </section>
+
+    {/* Semi-Leaders (Members with specialRole) */}
+    {['super_admin','admin','troop_super','group_leader','branch_leader'].includes(myRole) && (
+      <section className="card stack">
+        <div className="row" style={{marginBottom:'1rem'}}><h3>特別身份成員 (執委/管委)</h3></div>
+        <p className="muted">深資、樂行童軍具備特別身份者，可由支部領袖授予特定的管理權限。</p>
+        <table className="table">
+          <thead><tr><th>姓名</th><th>YMIS</th><th>支部</th><th>特別身份</th><th>操作</th></tr></thead>
+          <tbody>{s.members.filter(m => (m.branchId === 'b4' || m.branchId === 'b5') && m.specialRole).map(m => (
+            <tr key={m.id}>
+              <td>{m.name}</td>
+              <td>{m.ymNumber}</td>
+              <td>{branches.find(b=>b.id===m.branchId)?.short}</td>
+              <td><span className="badge gold">{m.specialRole}</span></td>
+              <td>
+                <button className="btn" style={{fontSize:'0.8em'}} onClick={() => openPerms(m.id, true)}>🔑 授權</button>
+              </td>
+            </tr>
+          ))}
+          {s.members.filter(m => (m.branchId === 'b4' || m.branchId === 'b5') && m.specialRole).length === 0 && <tr><td colSpan={5} className="muted" style={{textAlign:'center'}}>暫無具備特別身份的成員。</td></tr>}
+          </tbody>
+        </table>
+      </section>
+    )}
+
+    <section className="card">
+      <div className="row" style={{marginBottom:'1rem'}}><h3>家長及一般成員</h3></div>
+      <table className="table">
+        <thead><tr><th>姓名</th><th>角色</th><th>狀態</th><th>操作</th></tr></thead>
+        <tbody>{filtered.filter(u => u.role === 'member' || u.role === 'parent').map(u => (
+          <tr key={u.id}>
+            <td>{u.name}</td>
+            <td>{ROLE_LABEL[u.role]||u.role}</td>
+            <td>{u.approved?<span className="badge green">啟用</span>:<span className="badge red">停用</span>}</td>
+            <td>
               <button className="btn" style={{fontSize:'0.8em'}} onClick={()=>toggle(u.id)}>{u.approved?'停用':'啟用'}</button>
-              <button className="btn" style={{fontSize:'0.8em',marginLeft:4,color:'#d93025'}} onClick={()=>del(u.id,u.name)}>刪除</button>
-            </>:<span className="muted" style={{fontSize:'0.8em'}}>無權</span>}
-          </td>
-        </tr>;
-      })}</tbody>
-    </table>
-    <p className="muted">{filtered.length} / {s.users.length} 個使用者</p>
+            </td>
+          </tr>
+        ))}</tbody>
+      </table>
     </section>
   </div>;
 }

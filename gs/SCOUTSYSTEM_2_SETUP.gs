@@ -1115,15 +1115,31 @@ function getUserFeatures_(userId, role) {
 }
 
 function handleGrantFeature_(p) {
+  var operatedBy = p.operatedBy || 'system';
+  var targetUserId = p.targetUserId;
+  var feature = p.feature;
+  
+  // 權限檢查：授權人必須自己擁有該權限，或者他是管理員
+  var users = mapUsers_();
+  var operator = users.filter(function(u){return u.id === operatedBy;})[0];
+  var opRole = operator ? operator.role : '';
+  
+  if (opRole !== 'admin' && opRole !== 'super_admin' && opRole !== 'troop_super') {
+    var opFeatures = getUserFeatures_(operatedBy, opRole);
+    if (opFeatures.indexOf(feature) < 0) {
+      return { success: false, error: '你沒有權限授權此功能給他人。' };
+    }
+  }
+
   appendRowByHeaders_('UserPermissions', {
-    userId: p.targetUserId,
-    feature: p.feature,
+    userId: targetUserId,
+    feature: feature,
     granted: p.granted !== false ? 'true' : 'false',
-    grantedBy: p.operatedBy || '',
+    grantedBy: operatedBy,
     grantedAt: now_(),
     note: p.note || ''
   });
-  writeAudit_(p.operatedBy || 'system', 'grantFeature', 'UserPermissions', p.targetUserId, p.feature + '=' + (p.granted !== false));
+  writeAudit_(operatedBy, 'grantFeature', 'UserPermissions', targetUserId, feature + '=' + (p.granted !== false));
   return { success: true };
 }
 

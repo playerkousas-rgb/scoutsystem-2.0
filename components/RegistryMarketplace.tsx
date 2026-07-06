@@ -10,9 +10,8 @@ function visibleRolesFromMin(minRole: Role) {
   return ROLE_ORDER.slice(Math.max(0, idx));
 }
 
-export function MarketplacePanel() {
+export function MarketplacePage() {
   const [registry, setRegistry] = useState<Registry | null>(null);
-  const [fallback, setFallback] = useState('');
   const [unitCode, setUnitCode] = useState('0082');
   const [role, setRole] = useState<Role>('admin');
 
@@ -20,30 +19,42 @@ export function MarketplacePanel() {
     const s = getSession();
     if (s?.troopCode) setUnitCode(s.troopCode);
     if (s?.role) setRole(s.role);
-    fetchRegistry().then(r => { setRegistry(r.registry); if (r.fromFallback) setFallback(r.error || '使用內置 fallback'); });
+    fetchRegistry().then(r => setRegistry(r.registry));
   }, []);
 
   const list = useMemo(() => registry ? resolvePlugins(registry, unitCode) : [], [registry, unitCode]);
 
   if (!registry) return <section className="card">載入轉駁器 registry...</section>;
 
-  return <div className="stack">
-    <section className="card">
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <div><strong>Registry：</strong><span className="muted">{REGISTRY_URL}</span></div>
-        <span className="badge blue">schema {registry.schema} · {registry.updated}</span>
-      </div>
-      {fallback && <p className="muted danger">⚠️ 無法即時讀取 registry，暫用 fallback：{fallback}</p>}
-      <div className="grid" style={{ marginTop: 12 }}>
-        <label>測試旅團碼 u<input value={unitCode} onChange={e=>setUnitCode(e.target.value)} /></label>
-        <label>測試角色<select value={role} onChange={e=>setRole(e.target.value as Role)}>{ROLE_ORDER.map(r=><option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select></label>
-      </div>
-    </section>
+  return (
+    <div className="stack">
+      <section className="hero">
+        <span className="badge gold">元件市場</span>
+        <h1>元件市場與轉駁中心</h1>
+        <p>在此管理跨平台元件及查看接駁設定。</p>
+      </section>
 
-    <section className="grid-wide">
-      {list.map(p => <PluginCard key={p.id} plugin={p} unitCode={unitCode} role={role} />)}
-    </section>
-  </div>
+      {/* 轉駁中心內容置頂 */}
+      <section className="card stack" style={{ background: '#f8f9fa', border: '1px solid #ddd' }}>
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <div><strong>接駁單位：</strong>{unitCode}</div>
+          <span className="badge gold">Registry Live</span>
+        </div>
+        <div className="grid" style={{ fontSize: '0.9rem', marginTop: '10px' }}>
+          <div><strong>Registry URL:</strong> <code style={{ wordBreak: 'break-all' }}>{REGISTRY_URL}</code></div>
+          <div><strong>Hub ID:</strong> <code>{registry.hub}</code></div>
+        </div>
+        <div className="muted" style={{ fontSize: '0.8rem', marginTop: '10px' }}>
+          💡 開啟元件時，主系統會自動附帶 <code>?u={unitCode}&role={role}&from=portal&embed=1</code> 及 YMIS 參數。
+        </div>
+      </section>
+
+      {/* 元件列表 */}
+      <section className="grid-wide">
+        {list.map(p => <PluginCard key={p.id} plugin={p} unitCode={unitCode} role={role} />)}
+      </section>
+    </div>
+  );
 }
 
 function PluginCard({ plugin, unitCode, role }: { plugin: ResolvedPlugin; unitCode: string; role: Role }) {
