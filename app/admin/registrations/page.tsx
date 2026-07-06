@@ -45,48 +45,85 @@ function RegistrationsInner(){
     } catch(e:any) { setErr(e.message); } finally { setLoadingBatch(false); }
   }
 
-  function csv(){
-    if(!s)return;const e=s.events.find(x=>x.id===eventId);if(!e)return;
-    const rows=[['姓名','YMIS','支部','小隊','回覆狀態','緊急聯絡人','緊急電話','付款狀態']];
-    e.targetMemberIds.forEach(mid=>{
-      const m=s.members.find(x=>x.id===mid);if(!m)return;
-      const r=replyStatus(s,eventId,mid);const p=s.patrols.find(x=>x.id===m.patrolId);
-      const st = r?.type === 'registered' ? '確定參加' : r?.type === 'declined' ? '婉拒不參加' : r?.type === 'interested' ? '有興趣(待確認)' : '尚未回覆';
-      const pd = getIsPaid(mid) ? '已完成付款' : '未付款';
-      rows.push([m.name,m.ymNumber,m.branchId||'',p?.name||'無分隊/不適用',st,m.emergencyContactName||'',m.emergencyContactPhone||'',pd]);
-    });
-    const blob=new Blob(['\ufeff'+rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n')],{type:'text/csv'});
-    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${e.title}_中文報名名單.csv`;a.click();URL.revokeObjectURL(url);
-  }
   if(!s)return <div className="card">{err||'載入中...'}</div>;
   const event=s.events.find(e=>e.id===eventId);
-  const targets=event?s.members.filter(m=>event.targetMemberIds.includes(m.id)):[];
   
+  const memberTargets = event ? s.members.filter(m => event.targetMemberIds.includes(m.id)) : [];
+  const leaderTargets = event ? s.users.filter(u => event.targetMemberIds.includes(u.id) && !memberTargets.some(m => m.id === u.id)) : [];
+  const unifiedTargets = [
+    ...memberTargets.map(m => ({ ...m, isLeader: false, branchId: m.branchId || 'b3' })),
+    ...leaderTargets.map(u => ({ id: u.id, name: u.name, ymNumber: '領袖帳號', branchId: 'leader', patrolId: '', emergencyContactName: '自理', emergencyContactPhone: u.email || '—', isLeader: true }))
+  ];
+
+  function csv(){
+    if(!s || !event) return;
+    const rows=[['姓名','YMIS','支部','小隊/身份','回覆狀態','緊急聯絡人','緊急電話','付款狀態']];
+    unifiedTargets.forEach(m => {
+      const r=replyStatus(s,eventId,m.id);
+      const p=s.patrols.find(x=>x.id===m.patrolId);
+      const st = r?.type === 'registered' ? '確定參加' : r?.type === 'declined' ? '婉拒不參加' : r?.type === 'interested' ? '有興趣(待認)' : '尚未回覆';
+      const pd = getIsPaid(m.id) ? '已完成付款' : '未付款';
+      const bName = m.isLeader ? '領袖團隊' : (m.branchId || '');
+      const pName = m.isLeader ? '領袖出席' : (p?.name || '無小隊分組');
+      rows.push([m.name, m.ymNumber, bName, pName, st, m.emergencyContactName||'', m.emergencyContactPhone||'', pd]);
+    });
+    const blob=new Blob(['\ufeff'+rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n')],{type:'text/csv'});
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${event.title}_全中文報名名單.csv`;a.click();URL.revokeObjectURL(url);
+  }
+
   let totalYes = 0, totalHeart = 0, totalNo = 0, totalPending = 0, totalPaid = 0;
-  const map:Record<string,{name:string;yes:number;heart:number;no:number;pending:number;paid:number;total:number}>={};
-  targets.forEach(m=>{
-    const p=s.patrols.find(x=>x.id===m.patrolId);
-    const key=p?.id||'none';
-    map[key]||={name:p?.name||'無分隊 / 旅部統籌',yes:0,heart:0,no:0,pending:0,paid:0,total:0};
-    map[key].total++;
-    const r=replyStatus(s,eventId,m.id);
-    if(getIsPaid(m.id)) { map[key].paid++; totalPaid++; }
-    if(r?.type==='registered') { map[key].yes++; totalYes++; }
-    else if(r?.type==='interested') { map[key].heart++; totalHeart++; }
-    else if(r?.type==='declined') { map[key].no++; totalNo++; }
-    else { map[key].pending++; totalPending++; }
+  
+  const BRANCH_NAMES: Record<string, string> = {
+    b1: '🎒 小童軍支部 (Grasshopper)',
+    b2: '🐺 幼童軍支部 (Cub Scout)',
+    b3: '⚜️ 童軍支部 (Scout)',
+    b4: '🧭 深資童軍支部 (Venture)',
+    b5: '🚶 樂行童軍支部 (Rover)',
+    leader: '👔 旅團領袖與統籌團隊'
+  };
+
+  const branchMap: Record<string, { id: string; name: string; yes: number; heart: number; no: number; pending: number; paid: number; total: number }> = {};
+  const patrolMap: Record<string, { name: string; yes: number; heart: number; no: number; pending: number; paid: number; total: number }> = {};
+
+  unifiedTargets.forEach(m => {
+    const bid = m.branchId || 'b3';
+    branchMap[bid] ||= { id: bid, name: BRANCH_NAMES[bid] || bid, yes: 0, heart: 0, no: 0, pending: 0, paid: 0, total: 0 };
+    branchMap[bid].total++;
+
+    const r = replyStatus(s, eventId, m.id);
+    const isPaidCur = getIsPaid(m.id);
+    if (isPaidCur) { branchMap[bid].paid++; totalPaid++; }
+    if (r?.type === 'registered') { branchMap[bid].yes++; totalYes++; }
+    else if (r?.type === 'interested') { branchMap[bid].heart++; totalHeart++; }
+    else if (r?.type === 'declined') { branchMap[bid].no++; totalNo++; }
+    else { branchMap[bid].pending++; totalPending++; }
+
+    if (!m.isLeader) {
+      const p = s.patrols.find(x => x.id === m.patrolId);
+      const pKey = p?.id || ('none_' + bid);
+      const pName = p ? `${bid === 'b2' ? '幼童軍' : bid === 'b3' ? '童軍' : bid} · ${p.name}` : `${BRANCH_NAMES[bid]?.split(' ')[1] || bid} · 未分小隊`;
+      patrolMap[pKey] ||= { name: pName, yes: 0, heart: 0, no: 0, pending: 0, paid: 0, total: 0 };
+      patrolMap[pKey].total++;
+      if (isPaidCur) patrolMap[pKey].paid++;
+      if (r?.type === 'registered') patrolMap[pKey].yes++;
+      else if (r?.type === 'interested') patrolMap[pKey].heart++;
+      else if (r?.type === 'declined') patrolMap[pKey].no++;
+      else patrolMap[pKey].pending++;
+    }
   });
-  const patrolStats=Object.values(map);
+
+  const branchStats = Object.values(branchMap);
+  const patrolStats = Object.values(patrolMap);
   const modifiedCount = Object.keys(paidOverrides).length;
 
-  return <div className="stack"><section className="hero"><span className="badge gold">報名統計與付款管理</span><h1>報名名單及匯出</h1><p>全中文清楚展示總體與小隊報名與付款統計，可暫存多筆切換後批次同步試算表。</p></section>
+  return <div className="stack"><section className="hero"><span className="badge gold">報名統計與付款管理</span><h1>活動報名名單與分層報名統計</h1><p>全中文展示總體報名概況，先分支部匯總（最多6格），再細分童軍與幼童軍小隊報名統計。</p></section>
     {err&&<p className="badge red">{err}</p>}
     <section className="card"><label>選擇活動<select value={eventId} onChange={e=>{setEventId(e.target.value);setPaidOverrides({});}}>{s.events.map(e=><option key={e.id} value={e.id}>{e.title}</option>)}</select></label></section>
     {event&&<>
     <section className="card stack" style={{ background: '#f8fafc', borderLeft: '6px solid #1a73e8' }}>
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ margin: 0 }}>📊 總體報名與付款概況</h2>
-        <span className="badge blue" style={{ fontSize: '0.95rem' }}>目標總人數：{targets.length} 人</span>
+        <span className="badge blue" style={{ fontSize: '0.95rem' }}>目標總人數：{unifiedTargets.length} 人</span>
       </div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginTop: 8 }}>
         <div className="card" style={{ background: '#e6f4ea', borderColor: '#ceead6', padding: 12 }}>
@@ -113,17 +150,38 @@ function RegistrationsInner(){
     </section>
 
     <section className="card stack">
-      <h3>🦅 各小隊細分統計概況</h3>
+      <h3>🏢 第一層：各支部與領袖報名統計</h3>
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        {branchStats.map(b => (
+          <div className="card stack" key={b.id} style={{ padding: 12, borderTop: '4px solid #1a73e8' }}>
+            <div className="row" style={{ justifyContent: 'space-between' }}>
+              <span className="badge blue" style={{ fontWeight: 'bold', fontSize: '0.88rem' }}>{b.name}</span>
+              <span className="muted" style={{ fontSize: '0.8rem' }}>共 {b.total} 人</span>
+            </div>
+            <div style={{ fontSize: '0.88rem', lineHeight: '1.7', marginTop: 4 }}>
+              <div>✅ 確定參加：<strong style={{color:'#137333'}}>{b.yes}</strong> 人</div>
+              <div>❌ 婉拒不參加：<strong style={{color:'#c5221f'}}>{b.no}</strong> 人</div>
+              <div>❤️ 有興趣：<strong style={{color:'#b06000'}}>{b.heart}</strong> 人</div>
+              <div>⚠️ 尚未回覆：<strong>{b.pending}</strong> 人</div>
+              <div style={{ borderTop: '1px dashed #ddd', paddingTop: 4, marginTop: 4 }}>💰 已付款核對：<strong style={{color:'#1a73e8'}}>{b.paid}</strong> 人</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section className="card stack">
+      <h3>🦅 第二層：各小隊報名統計 (童軍與幼童軍)</h3>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
         {patrolStats.map(p => (
-          <div className="card stack" key={p.name} style={{ padding: 12 }}>
+          <div className="card stack" key={p.name} style={{ padding: 12, borderTop: '4px solid #34a853' }}>
             <div className="row" style={{ justifyContent: 'space-between' }}>
-              <span className="badge blue" style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{p.name}</span>
+              <span className="badge green" style={{ fontWeight: 'bold', fontSize: '0.88rem' }}>{p.name}</span>
               <span className="muted" style={{ fontSize: '0.8rem' }}>共 {p.total} 人</span>
             </div>
             <div style={{ fontSize: '0.88rem', lineHeight: '1.7', marginTop: 4 }}>
               <div>✅ 確定參加：<strong style={{color:'#137333'}}>{p.yes}</strong> 人</div>
-              <div>❌ 婉拒參加：<strong style={{color:'#c5221f'}}>{p.no}</strong> 人</div>
+              <div>❌ 婉拒不參加：<strong style={{color:'#c5221f'}}>{p.no}</strong> 人</div>
               <div>❤️ 有興趣：<strong style={{color:'#b06000'}}>{p.heart}</strong> 人</div>
               <div>⚠️ 尚未回覆：<strong>{p.pending}</strong> 人</div>
               <div style={{ borderTop: '1px dashed #ddd', paddingTop: 4, marginTop: 4 }}>💰 已付款核對：<strong style={{color:'#1a73e8'}}>{p.paid}</strong> 人</div>
@@ -132,6 +190,7 @@ function RegistrationsInner(){
         ))}
       </div>
     </section>
+
     <section className="card">
       {modifiedCount > 0 && (
         <div className="row" style={{ padding: '12px 16px', background: '#fffde7', border: '2px solid #f9ab00', borderRadius: 8, marginBottom: 12, justifyContent: 'space-between', alignItems: 'center' }}>
@@ -141,19 +200,19 @@ function RegistrationsInner(){
           </button>
         </div>
       )}
-      <table className="table"><thead><tr><th>姓名</th><th>小隊</th><th>回覆狀態</th><th>緊急電話</th><th>付款狀態</th><th>操作</th></tr></thead>
-      <tbody>{targets.map(m=>{
+      <table className="table"><thead><tr><th>姓名</th><th>支部/團隊</th><th>小隊/身份</th><th>回覆意願狀態</th><th>緊急電話</th><th>付款狀態</th><th>操作</th></tr></thead>
+      <tbody>{unifiedTargets.map(m=>{
         const r=replyStatus(s,eventId,m.id);
         const p=s.patrols.find(x=>x.id===m.patrolId);
         const isPaidCur = getIsPaid(m.id);
         const isChanged = paidOverrides[m.id] !== undefined;
         return <tr key={m.id} style={isChanged ? { background: '#fffef0' } : {}}>
-          <td><strong>{m.name}</strong></td><td>{p?.name||'不適用'}</td>
+          <td><strong>{m.name}</strong></td><td><span className="badge blue">{m.isLeader ? '👔 領袖團隊' : (m.branchId||'—')}</span></td><td>{m.isLeader ? '出席領袖' : (p?.name||'未分隊')}</td>
           <td>
             {(() => {
               const st = r?.type;
               if (st === 'registered') return <span className="badge green" style={{fontWeight:'bold'}}>✅ 確定參加</span>;
-              if (st === 'declined') return <span className="badge red" style={{fontWeight:'bold'}}>❌ 婉拒參加</span>;
+              if (st === 'declined') return <span className="badge red" style={{fontWeight:'bold'}}>❌ 婉拒不參加</span>;
               if (st === 'interested') return <span className="badge gold" style={{fontWeight:'bold'}}>❤️ 有興趣(待認)</span>;
               return <span className="badge" style={{background:'#f1f3f4',color:'#555'}}>⚠️ 尚未回覆</span>;
             })()}

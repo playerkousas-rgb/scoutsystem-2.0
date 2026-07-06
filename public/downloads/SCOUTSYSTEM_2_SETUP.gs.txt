@@ -2079,7 +2079,38 @@ function handleImportBookmark_(p) {
   if (mode === 'troop_participation') {
     convertedEventId = uid_('e');
     var members = readTable_('Members');
-    var targets = members.map(function (m) { return getField_(m, 'memberId'); }).join(',');
+    var users = readTable_('Users');
+    var branchTags = String(p.branchTags || '全旅').trim();
+    var targetList = [];
+
+    var includeAll = branchTags.indexOf('全旅') >= 0 || branchTags === '';
+    var includeB1 = includeAll || branchTags.indexOf('小童軍') >= 0 || branchTags.indexOf('b1') >= 0;
+    var includeB2 = includeAll || branchTags.indexOf('幼童軍') >= 0 || branchTags.indexOf('b2') >= 0;
+    var includeB3 = includeAll || branchTags.indexOf('童軍') >= 0 || branchTags.indexOf('b3') >= 0;
+    var includeB4 = includeAll || branchTags.indexOf('深資') >= 0 || branchTags.indexOf('b4') >= 0;
+    var includeB5 = includeAll || branchTags.indexOf('樂行') >= 0 || branchTags.indexOf('b5') >= 0;
+    var includeLeader = includeAll || branchTags.indexOf('領袖') >= 0 || branchTags.indexOf('團長') >= 0 || branchTags.indexOf('旅長') >= 0;
+
+    members.forEach(function(m) {
+      var bid = getField_(m, 'branchId');
+      if (bid === 'b1' && includeB1) targetList.push(getField_(m, 'memberId'));
+      else if (bid === 'b2' && includeB2) targetList.push(getField_(m, 'memberId'));
+      else if (bid === 'b3' && includeB3) targetList.push(getField_(m, 'memberId'));
+      else if (bid === 'b4' && includeB4) targetList.push(getField_(m, 'memberId'));
+      else if (bid === 'b5' && includeB5) targetList.push(getField_(m, 'memberId'));
+      else if (includeAll) targetList.push(getField_(m, 'memberId'));
+    });
+
+    if (includeLeader) {
+      users.forEach(function(u) {
+        var r = String(getField_(u, 'role')).toLowerCase();
+        if (['admin','super_admin','troop_super','group_leader','branch_leader','coach'].indexOf(r) >= 0) {
+          targetList.push(getField_(u, 'userId'));
+        }
+      });
+    }
+    var targets = targetList.filter(function(v,i,a){return a.indexOf(v)===i;}).join(',');
+
     appendRowByHeaders_('Events', {
       eventId: convertedEventId, title: p.title || '', scope: 'troop', branchId: '',
       date: p.internalDeadline || p.officialDeadline || '', location: '待定',

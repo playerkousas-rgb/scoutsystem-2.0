@@ -1,18 +1,29 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { AppState, loadState, computeStats } from '@/lib/store';
+import { AppState, loadState, computeStats, replyStatus } from '@/lib/store';
+import { apiSetReply } from '@/lib/api';
 import Auth from '@/components/Auth';
 import { FeatureCard, SummaryCard } from '@/components/Cards';
 import PluginIframeCard from '@/components/PluginCard';
+import Collapsible from '@/components/Collapsible';
 import { getSession } from '@/lib/session';
 import { ROLE_LABEL } from '@/lib/model';
 import Link from 'next/link';
 
 export default function Leader(){
   const [s,setS]=useState<AppState|null>(null);const [err,setErr]=useState('');
+  const [loadingId,setLoadingId]=useState('');
   useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message))},[]);
   const stats=s?computeStats(s):{users:0,pending:0,activities:0,notices:0};
   const session = getSession();
+  const myId = session?.userId || '';
+
+  async function act(eid:string,type:'registered'|'declined'|'interested'){
+    if(!myId)return;setErr('');setLoadingId(eid+type);
+    try{const f=await apiSetReply({eventId:eid,memberId:myId,type});setS(f)}catch(e:any){setErr(e.message)}finally{setLoadingId('')}
+  }
+
+  const events = (s?.events || []).filter(e => e.status === 'published' && (e.scope === 'troop' || e.targetMemberIds.includes(myId) || e.branchId === session?.branchId));
 
   return <Auth roles={['super_admin','admin','group_leader','branch_leader','coach']}><div className="stack">
     <section className="card stack" style={{ background: 'linear-gradient(135deg, #1a73e8 0%, #4285f4 100%)', color: '#fff' }}>
@@ -50,6 +61,49 @@ export default function Leader(){
         </div>
       </section>
     )}
+
+    <Collapsible title="📢 待回覆與出席活動 (領袖個人報名與確認)" defaultOpen={true}>
+      <p className="muted">作為領袖或統籌人員，你可在此點選出席旅團通告與集會活動，方便旅長與團隊掌握出席人力。</p>
+      <div className="stack">
+        {events.length===0?<div className="card"><p className="muted">暫無待確認或待出席的活動通告。</p></div>:
+          events.map(e=>{
+            const r=replyStatus(s,e.id,myId);
+            return (
+              <div className="event-line event-blue" key={e.id}>
+                <div>
+                  <strong>{e.title}</strong>
+                  <div className="muted">{e.date} · {e.location}{e.fee?` · ${e.fee}`:''}</div>
+                </div>
+                <div className="row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  {(() => {
+                    const st = r?.type;
+                    if (st === 'registered') return <span className="badge green" style={{fontSize: '0.85rem', padding: '4px 8px', fontWeight: 'bold'}}>✅ 狀態：確定出席</span>;
+                    if (st === 'declined') return <span className="badge red" style={{fontSize: '0.85rem', padding: '4px 8px', fontWeight: 'bold'}}>❌ 狀態：不能出席</span>;
+                    if (st === 'interested') return <span className="badge gold" style={{fontSize: '0.85rem', padding: '4px 8px', fontWeight: 'bold'}}>❤️ 狀態：有興趣出席</span>;
+                    return <span className="badge" style={{fontSize: '0.85rem', padding: '4px 8px', background: '#fff9c4', color: '#555', border: '1px solid #fbc02d'}}>⚠️ 狀態：尚未確認</span>;
+                  })()}
+                  <button
+                    className="btn"
+                    disabled={loadingId===e.id+'registered'}
+                    style={r?.type === 'registered' ? { background: '#2e7d32', color: '#fff', border: '2px solid #1b5e20', fontWeight: 'bold' } : {}}
+                    onClick={()=>act(e.id,'registered')}
+                  >
+                    {r?.type === 'registered' ? '【已確認】✅ 確定出席' : '✅ 確定出席'}
+                  </button>
+                  <button
+                    className="btn"
+                    disabled={loadingId===e.id+'declined'}
+                    style={r?.type === 'declined' ? { background: '#d32f2f', color: '#fff', border: '2px solid #b71c1c', fontWeight: 'bold' } : {}}
+                    onClick={()=>act(e.id,'declined')}
+                  >
+                    {r?.type === 'declined' ? '【已婉拒】❌ 不能出席' : '❌ 不能出席'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+      </div>
+    </Collapsible>
 
     <section className="grid" style={{ marginTop: '2rem' }}>
       <FeatureCard title="成員資料庫" icon="👥" text="查看及管理所屬支部成員。" href="/admin/members"/>
