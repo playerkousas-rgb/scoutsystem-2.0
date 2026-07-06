@@ -1083,16 +1083,29 @@ function buildDashboard(userId) {
       }
     }
     if (member) {
-      state.members = [member];
-      state.events = allEvents.filter(function (e) {
-        if (e.status !== 'published') return false;
-        if (e.scope === 'troop' || e.branchId === member.branchId) return true;
-        return false;
-      });
-      state.replies = allReplies.filter(function (r) { return r.memberId === member.id; });
-      state.regularMeetings = allRegularMeetings.filter(function (r) { return r.branchId === member.branchId; });
-      state.cancelledMeetings = allCancelledMeetings.filter(function (c) { return c.branchId === member.branchId; });
-      state.patrols = allPatrols.filter(function (p) { return p.branchId === member.branchId; });
+      var isSemiLeader = (member.specialRole && member.specialRole !== '') || (state.userFeatures && state.userFeatures.length > 0);
+      if (isSemiLeader) {
+        state.members = allMembers.filter(function (m) { return m.branchId === member.branchId; });
+        state.applications = allApplications.filter(function (a) { return a.branchId === member.branchId; });
+        state.events = allEvents.filter(function (e) { return e.scope === 'troop' || e.branchId === member.branchId; });
+        var semiEventIds = state.events.map(function (e) { return e.id; });
+        state.replies = allReplies.filter(function (r) { return semiEventIds.indexOf(r.eventId) >= 0 || r.memberId === member.id; });
+        state.regularMeetings = allRegularMeetings.filter(function (r) { return r.branchId === member.branchId; });
+        state.cancelledMeetings = allCancelledMeetings.filter(function (c) { return c.branchId === member.branchId; });
+        state.meetings = allMeetings.filter(function (m) { return !m.branchId || m.branchId === member.branchId; });
+        state.patrols = allPatrols.filter(function (p) { return p.branchId === member.branchId; });
+      } else {
+        state.members = [member];
+        state.events = allEvents.filter(function (e) {
+          if (e.status !== 'published') return false;
+          if (e.scope === 'troop' || e.branchId === member.branchId) return true;
+          return false;
+        });
+        state.replies = allReplies.filter(function (r) { return r.memberId === member.id; });
+        state.regularMeetings = allRegularMeetings.filter(function (r) { return r.branchId === member.branchId; });
+        state.cancelledMeetings = allCancelledMeetings.filter(function (c) { return c.branchId === member.branchId; });
+        state.patrols = allPatrols.filter(function (p) { return p.branchId === member.branchId; });
+      }
     }
   }
 
@@ -1450,6 +1463,7 @@ function handleLogin_(p) {
     return json({ success: true, user: {
       userId: getField_(member, 'memberId'), name: getField_(member, 'name'), role: 'member',
       branchId: getField_(member, 'branchId'), memberId: getField_(member, 'memberId'), age: age,
+      specialRole: getField_(member, 'specialRole') || '',
       dashboard: '/member'
     }});
   }
