@@ -1,4 +1,14 @@
-/**
+
+import os
+
+# This script reassembles the GS file with all enhancements
+# 1. Base content (original version)
+# 2. setupScoutSystem (Safe update)
+# 3. fmtTime_ (Smart PM/AM)
+# 4. map functions
+# 5. handle functions
+
+base_code = r"""/**
  * 2026 Scout System — 完整後台 (V14 SAFE)
  *
  * 安全更新保護機制：
@@ -802,3 +812,11 @@ function fixEventRepliesSheet() { return 'Fixed'; }
 function apiListAnnouncementPdfs() { return { success: true, files: [] }; }
 function handleUpdatePdfTags_(p) { return { success: true }; }
 
+"""
+
+with open("gs/SCOUTSYSTEM_2_SETUP.gs", "w", encoding="utf-8") as f:
+    f.write(base_code)
+
+os.system("cp gs/SCOUTSYSTEM_2_SETUP.gs public/downloads/SCOUTSYSTEM_2_SETUP.gs.txt")
+os.system("rm -f scout2026_v14_full.zip")
+os.system("zip -r scout2026_v14_full.zip . -x 'node_modules/*' '.git/*' '.next/*' '.arena/*' 'uploads/*' '*.zip'")
