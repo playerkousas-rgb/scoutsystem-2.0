@@ -1228,8 +1228,15 @@ function handleGetUserFeatures_(p) {
   var userId = p.targetUserId || '';
   var users = readTable_('Users');
   var user = users.filter(function(u){return getField_(u,'userId')===userId;})[0];
-  if (!user) return { success: false, error: '找不到用戶' };
-  var role = String(getField_(user, 'role')).toLowerCase();
+  var role = '';
+  if (!user) {
+    var members = readTable_('Members');
+    var member = members.filter(function(m){return getField_(m,'memberId')===userId;})[0];
+    if (!member) return { success: false, error: '找不到用戶' };
+    role = 'member';
+  } else {
+    role = String(getField_(user, 'role')).toLowerCase();
+  }
   var defaults = FEATURE_DEFAULTS[role] || [];
   
   var overrides = {};
