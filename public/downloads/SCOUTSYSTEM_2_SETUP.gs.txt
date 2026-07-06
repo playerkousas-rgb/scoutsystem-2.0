@@ -2079,8 +2079,8 @@ function handleCreateRegularMeeting_(p) {
   appendRowByHeaders_('RegularMeetings', {
     meetingId: id, branchId: p.branchId || '', title: p.title || '',
     weekday: Number(p.weekday) || 6, frequency: p.frequency || 'weekly',
-    startTime: p.startTime || '14:00',
-    endTime: p.endTime || '16:00', location: p.location || '本中心',
+    startTime: "'" + (p.startTime || '14:00'),
+    endTime: "'" + (p.endTime || '16:00'), location: p.location || '本中心',
     enabled: true, note: p.note || ''
   });
   writeAudit_(p.operatedBy || 'system', 'createRegularMeeting', 'RegularMeetings', id, p.title || '');
@@ -2099,7 +2099,9 @@ function handleUpdateRegularMeeting_(p) {
   var fields = ['branchId', 'title', 'weekday', 'frequency', 'startTime', 'endTime', 'location', 'enabled'];
   fields.forEach(function (f) {
     if (p[f] !== undefined && p[f] !== null) {
-      updateCellByName_('RegularMeetings', 'meetingId', p.meetingId, f, p[f]);
+      var val = p[f];
+      if (f === 'startTime' || f === 'endTime') val = "'" + val;
+      updateCellByName_('RegularMeetings', 'meetingId', p.meetingId, f, val);
     }
   });
   writeAudit_(p.operatedBy || 'system', 'updateRegularMeeting', 'RegularMeetings', p.meetingId, '');

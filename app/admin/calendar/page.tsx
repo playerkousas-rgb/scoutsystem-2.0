@@ -210,7 +210,7 @@ export default function Page(){
         <input value={endTime} onChange={e=>setEndTime(e.target.value)} placeholder="16:00"/>
         <input value={location} onChange={e=>setLocation(e.target.value)} placeholder="本中心"/>
       </div>
-      <button className="btn primary" onClick={addRegular}>新增規則</button>
+      <button className="btn primary" onClick={addRegular}>新增恆常集會</button>
     </section>
 
     {/* Special events */}
