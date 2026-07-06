@@ -29,11 +29,19 @@ export default function Admin(){
   const [err,setErr]=useState('');
   useEffect(()=>{loadState().then(setS).catch(e=>setErr(e.message))},[]);
   const stats=s?computeStats(s):{users:0,pending:0,activities:0,notices:0};
-  const session = s?.users.find(u => u.id === s?.users[0]?.id); 
+  
   let features = s?.userFeatures || [];
 
   if (features.length === 0 && (s?.users[0]?.role === 'admin' || s?.users[0]?.role === 'super_admin' || s?.users[0]?.role === 'troop_super')) {
     features = Object.keys(FEATURE_DEFS);
+  }
+
+  function renderFeatureCards(){
+    return features.map(f=>{
+      const def=FEATURE_DEFS[f];
+      if(!def) return null;
+      return <FeatureCard key={f} title={def.title} icon={def.icon} text={def.text} href={def.href}/>;
+    }).filter(Boolean);
   }
 
   return <Auth roles={['super_admin','troop_super','admin','group_leader','branch_leader','coach']}><div className="stack">
