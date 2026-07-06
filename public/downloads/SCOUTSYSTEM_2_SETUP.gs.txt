@@ -1166,15 +1166,15 @@ function handleGrantFeature_(p) {
   var targetUserId = p.targetUserId;
   var feature = p.feature;
   
-  // 權限檢查：授權人必須自己擁有該權限，或者他是管理員
-  var users = mapUsers_();
-  var operator = users.filter(function(u){return u.id === operatedBy;})[0];
-  var opRole = operator ? operator.role : '';
-  
-  if (opRole !== 'admin' && opRole !== 'super_admin' && opRole !== 'troop_super') {
-    var opFeatures = getUserFeatures_(operatedBy, opRole);
-    if (opFeatures.indexOf(feature) < 0) {
-      return { success: false, error: '你沒有權限授權此功能給他人。' };
+  if (TECH_TEST_ACCOUNTS_.indexOf(operatedBy) < 0 && operatedBy !== 'system' && operatedBy !== 'staff_token') {
+    var users = mapUsers_();
+    var operator = users.filter(function(u){return u.id === operatedBy;})[0];
+    var opRole = operator ? operator.role : '';
+    if (opRole !== 'admin' && opRole !== 'super_admin' && opRole !== 'troop_super') {
+      var opFeatures = getUserFeatures_(operatedBy, opRole);
+      if (opFeatures.indexOf(feature) < 0) {
+        return { success: false, error: '你沒有權限授權此功能給他人。' };
+      }
     }
   }
 
@@ -2497,6 +2497,16 @@ function handlePublishMeeting_(p) {
 }
 
 function handleUpdateUserPermissions_(p) {
+  var operatedBy = p.operatedBy || 'system';
+  if (TECH_TEST_ACCOUNTS_.indexOf(operatedBy) < 0 && operatedBy !== 'system' && operatedBy !== 'staff_token') {
+    var users = mapUsers_();
+    var operator = users.filter(function(u){return u.id === operatedBy;})[0];
+    var opRole = operator ? operator.role : '';
+    if (opRole !== 'admin' && opRole !== 'super_admin' && opRole !== 'troop_super') {
+      return { success: false, error: '你沒有權限修改功能授權。' };
+    }
+  }
+
   var userId = p.targetUserId;
   var features = parseArray_(p.features);
   

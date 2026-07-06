@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { AppState, loadState } from '@/lib/store';
-import { apiToggleUser, apiCreateUser, apiUpdateUserRole, apiDeleteUser, apiGrantFeature, apiRevokeFeature, apiGetUserFeatures } from '@/lib/api';
+import { apiToggleUser, apiCreateUser, apiUpdateUserRole, apiDeleteUser, apiGrantFeature, apiRevokeFeature, apiGetUserFeatures, apiUpdateUserPermissions } from '@/lib/api';
 import { ROLE_LABEL, branches, LEADER_ROLES } from '@/lib/model';
 import { checkEditPermission, assignableRoles } from '@/lib/permissions';
 import { getSession } from '@/lib/session';
@@ -48,6 +48,22 @@ export default function Page(){
       const result=await apiGetUserFeatures(userId);
       if(result.success) setPerms(result.features||[]);
     }catch(e:any){setErr(e.message)}finally{setLoading(false)}
+  }
+
+  function toggleFeatureLocal(feature: string, enabled: boolean) {
+    setPerms(prev => prev.map(p => p.feature === feature ? { ...p, enabled, overridden: true } : p));
+  }
+
+  async function savePermsBatch() {
+    if (!permsUserId) return;
+    setLoading(true); setErr(''); setOk('');
+    try {
+      const enabledFeatures = perms.filter(p => p.enabled).map(p => p.feature);
+      const freshState = await apiUpdateUserPermissions(permsUserId, enabledFeatures);
+      setOk('✅ 授權設定已完整批次寫入！');
+      setS(freshState);
+      setPermsUserId(null);
+    } catch (e: any) { setErr(e.message); } finally { setLoading(false); }
   }
 
   async function toggleFeature(userId:string,feature:string,enabled:boolean){
@@ -109,20 +125,28 @@ export default function Page(){
 
     {/* Permission panel */}
     {permsUserId&&(
-      <section className="card stack">
-        <h3>功能權限 — {isMemberPerms ? s.members.find(m=>m.id===permsUserId)?.name : s.users.find(u=>u.id===permsUserId)?.name}</h3>
-        <p className="muted">勾選 = 授權該功能。不勾 = 使用角色預設權限。</p>
+      <section className="card stack" style={{ border: '2px solid #f9ab00', background: '#fffde7' }}>
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <h3 style={{ margin: 0 }}>🔑 功能權限 — {isMemberPerms ? s.members.find(m=>m.id===permsUserId)?.name : s.users.find(u=>u.id===permsUserId)?.name}</h3>
+          <span className="badge gold">暫存編輯模式</span>
+        </div>
+        <p className="muted">請在下方勾選或取消所需功能，調整完畢後請務必點選底部的「💾 一鍵儲存並寫入授權」。</p>
         <div className="grid">
           {perms.map(f=>(
-            <label key={f.feature} style={{display:'flex',alignItems:'center',gap:6}}>
-              <input type="checkbox" checked={f.enabled} onChange={e=>toggleFeature(permsUserId,f.feature,e.target.checked)} disabled={loading}/>
-              <span>{FEATURE_LABELS[f.feature]||f.feature}</span>
+            <label key={f.feature} style={{display:'flex',alignItems:'center',gap:6, padding: '4px 8px', background: '#fff', borderRadius: '4px', border: '1px solid #ddd'}}>
+              <input type="checkbox" checked={f.enabled} onChange={e=>toggleFeatureLocal(f.feature, e.target.checked)} disabled={loading}/>
+              <span style={{ fontWeight: f.enabled ? 'bold' : 'normal' }}>{FEATURE_LABELS[f.feature]||f.feature}</span>
               {f.isDefault&&!f.overridden&&<span className="badge blue" style={{fontSize:'0.7em'}}>預設</span>}
-              {f.overridden&&<span className="badge gold" style={{fontSize:'0.7em'}}>已授權</span>}
+              {f.overridden&&<span className="badge gold" style={{fontSize:'0.7em'}}>自訂</span>}
             </label>
           ))}
         </div>
-        <button className="btn" onClick={()=>setPermsUserId(null)}>關閉</button>
+        <div className="row" style={{ marginTop: '1rem', justifyContent: 'flex-end', gap: 10 }}>
+          <button className="btn" disabled={loading} onClick={()=>setPermsUserId(null)}>取消關閉</button>
+          <button className="btn primary" disabled={loading} style={{ background: '#2e7d32', borderColor: '#1b5e20', fontSize: '1rem', padding: '8px 16px' }} onClick={savePermsBatch}>
+            {loading ? '⏳ 寫入試算表中...' : '💾 一鍵儲存並批次寫入'}
+          </button>
+        </div>
       </section>
     )}
 
