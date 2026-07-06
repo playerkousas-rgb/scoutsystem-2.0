@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { AppState, loadState } from '@/lib/store';
-import { apiToggleRegularMeeting, apiCreateRegularMeeting, apiCreateEvent, apiDeleteRegularMeeting } from '@/lib/api';
+import { apiToggleRegularMeeting, apiCreateRegularMeeting, apiCreateEvent, apiDeleteRegularMeeting, apiUpdateRegularMeeting } from '@/lib/api';
 import { branches } from '@/lib/model';
 import { getSession } from '@/lib/session';
 const weekdays=['日','一','二','三','四','五','六'];
@@ -10,6 +10,8 @@ export default function Page(){
   const [s,setS]=useState<AppState|null>(null);
   const [err,setErr]=useState('');
   const [okMsg,setOkMsg]=useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+
   // Regular meeting form
   const [selBranches,setSelBranches]=useState<string[]>(['b3']);
   const [title,setTitle]=useState('');
@@ -18,6 +20,16 @@ export default function Page(){
   const [startTime,setStartTime]=useState('14:00');
   const [endTime,setEndTime]=useState('16:00');
   const [location,setLocation]=useState('本中心');
+
+  // Edit form states
+  const [eTitle, setETitle] = useState('');
+  const [eWeekday, setEWeekday] = useState('6');
+  const [eFrequency, setEFrequency] = useState('weekly');
+  const [eStartTime, setEStartTime] = useState('14:00');
+  const [eEndTime, setEEndTime] = useState('16:00');
+  const [eLocation, setELocation] = useState('本中心');
+  const [eBranchId, setEBranchId] = useState('');
+
   // Special event form
   const [showSpecial,setShowSpecial]=useState(false);
   const [spTitle,setSpTitle]=useState('');
@@ -33,6 +45,36 @@ export default function Page(){
 
   async function toggle(id:string){setErr('');try{const f=await apiToggleRegularMeeting(id);setS(f)}catch(e:any){setErr(e.message)}}
   async function delRegular(id:string){if(!confirm('確定刪除此集會規則？'))return;setErr('');try{const f=await apiDeleteRegularMeeting(id);setS(f)}catch(e:any){setErr(e.message)}}
+
+  function startEdit(r: any) {
+    setEditingId(r.id);
+    setETitle(r.title);
+    setEWeekday(String(r.weekday));
+    setEFrequency(r.frequency || 'weekly');
+    setEStartTime(r.startTime);
+    setEEndTime(r.endTime);
+    setELocation(r.location);
+    setEBranchId(r.branchId);
+  }
+
+  async function saveEdit() {
+    if (!editingId) return;
+    setErr('');
+    try {
+      const fresh = await apiUpdateRegularMeeting({
+        meetingId: editingId,
+        title: eTitle,
+        weekday: eWeekday,
+        frequency: eFrequency,
+        startTime: eStartTime,
+        endTime: eEndTime,
+        location: eLocation,
+        branchId: eBranchId
+      });
+      setS(fresh);
+      setEditingId(null);
+    } catch (e: any) { setErr(e.message) }
+  }
 
   async function addRegular(){
     if(!title.trim()){setErr('請填標題');return;}
@@ -90,19 +132,55 @@ export default function Page(){
     <section className="card">
       <h3>恆常集會規則</h3>
       <table className="table">
-        <thead><tr><th>支部</th><th>標題</th><th>星期</th><th>時間</th><th>地點</th><th>啟用</th><th>操作</th></tr></thead>
-        <tbody>{(s.regularMeetings||[]).map(r=><tr key={r.id}>
-          <td>{branches.find(b=>b.id===r.branchId)?.short||r.branchId}</td>
-          <td>{r.title}</td>
-          <td>星期{weekdays[r.weekday]}</td>
-          <td>{r.startTime}-{r.endTime}</td>
-          <td>{r.location}</td>
-          <td>{r.enabled?<span className="badge green">啟用</span>:<span className="badge red">停用</span>}</td>
-          <td>
-            <button className="btn" onClick={()=>toggle(r.id)}>{r.enabled?'停用':'啟用'}</button>
-            <button className="btn red" onClick={()=>delRegular(r.id)}>🗑️</button>
-          </td>
-        </tr>)}</tbody>
+        <thead><tr><th>支部</th><th>標題</th><th>頻率</th><th>星期</th><th>時間</th><th>地點</th><th>啟用</th><th>操作</th></tr></thead>
+        <tbody>{(s.regularMeetings||[]).map(r=>{
+          const isEditing = editingId === r.id;
+          if (isEditing) return (
+            <tr key={r.id}>
+              <td><select value={eBranchId} onChange={e=>setEBranchId(e.target.value)}>{branches.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}</select></td>
+              <td><input value={eTitle} onChange={e=>setETitle(e.target.value)} style={{width:120}}/></td>
+              <td>
+                <select value={eFrequency} onChange={e=>setEFrequency(e.target.value)}>
+                  <option value="weekly">每週</option>
+                  <option value="biweekly">隔週</option>
+                  <option value="monthly_1">月#1</option>
+                  <option value="monthly_2">月#2</option>
+                  <option value="monthly_3">月#3</option>
+                  <option value="monthly_4">月#4</option>
+                  <option value="monthly_last">月底</option>
+                </select>
+              </td>
+              <td><select value={eWeekday} onChange={e=>setEWeekday(e.target.value)}>{weekdays.map((w,i)=><option key={i} value={i}>週{w}</option>)}</select></td>
+              <td>
+                <input value={eStartTime} onChange={e=>setEStartTime(e.target.value)} style={{width:60}}/> - 
+                <input value={eEndTime} onChange={e=>setEEndTime(e.target.value)} style={{width:60}}/>
+              </td>
+              <td><input value={eLocation} onChange={e=>setELocation(e.target.value)} style={{width:100}}/></td>
+              <td>—</td>
+              <td>
+                <button className="btn primary" onClick={saveEdit}>儲存</button>
+                <button className="btn" onClick={()=>setEditingId(null)}>取消</button>
+              </td>
+            </tr>
+          );
+
+          return (
+            <tr key={r.id}>
+              <td>{branches.find(b=>b.id===r.branchId)?.short||r.branchId}</td>
+              <td>{r.title}</td>
+              <td><span className="badge">{r.frequency==='biweekly'?'隔週':r.frequency==='weekly'?'每週':r.frequency}</span></td>
+              <td>星期{weekdays[r.weekday]}</td>
+              <td>{r.startTime}-{r.endTime}</td>
+              <td>{r.location}</td>
+              <td>{r.enabled?<span className="badge green">啟用</span>:<span className="badge red">停用</span>}</td>
+              <td>
+                <button className="btn" onClick={()=>startEdit(r)}>✏️</button>
+                <button className="btn" onClick={()=>toggle(r.id)}>{r.enabled?'停用':'啟用'}</button>
+                <button className="btn red" onClick={()=>delRegular(r.id)}>🗑️</button>
+              </td>
+            </tr>
+          );
+        })}</tbody>
       </table>
       {(s.regularMeetings||[]).length===0&&<p className="muted">暫無恆常集會規則。</p>}
     </section>

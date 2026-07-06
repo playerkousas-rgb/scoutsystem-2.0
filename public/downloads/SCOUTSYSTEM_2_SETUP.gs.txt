@@ -332,6 +332,15 @@ function formatScoutSystemSheets_(ss) {
     } else if (name === 'AuditLogs') {
       sh.setTabColor(SHEET_COLORS.audit);
       sh.getRange(1, 1, 1, lastCol).setBackground('#d93025');
+    } else if (name === 'RegularMeetings') {
+      // Force time format on HH:mm columns
+      if (lastRow > 1) {
+        var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+        ['startTime', 'endTime'].forEach(function(h) {
+          var idx = findColIndex_(headers, h);
+          if (idx >= 0) sh.getRange(2, idx + 1, lastRow - 1, 1).setNumberFormat('HH:mm');
+        });
+      }
     } else if (name !== 'README_新手必看') {
       sh.setTabColor(SHEET_COLORS.system);
       sh.getRange(1, 1, 1, lastCol).setBackground('#5f6368');
@@ -591,11 +600,10 @@ function fmtTime_(v) {
     return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
   }
   var s = String(v);
-  // Google Sheets might return "Sat Dec 30 1899 17:00:00 GMT+0800 (HKT)" or "17:00:00"
-  if (s.indexOf(':') >= 0 && s.length <= 8) {
-    // Already HH:mm:ss or HH:mm
-    var parts = s.split(':');
-    return parts[0].padStart(2, '0') + ':' + parts[1].padStart(2, '0');
+  // Robust check for HH:mm in various formats
+  var match = s.match(/(\d{1,2}):(\d{1,2})/);
+  if (match) {
+    return match[1].padStart(2, '0') + ':' + match[2].padStart(2, '0');
   }
   if (s.indexOf('1899') >= 0 || s.indexOf('1900') >= 0 || s.indexOf('GMT') >= 0) {
     var d = new Date(s);
@@ -1305,6 +1313,7 @@ function doGet(e) {
       case 'importBookmark': return wrap_(handleImportBookmark_(p), p);
       case 'toggleRegularMeeting': return wrap_(handleToggleRegularMeeting_(p), p);
       case 'createRegularMeeting': return wrap_(handleCreateRegularMeeting_(p), p);
+      case 'updateRegularMeeting': return wrap_(handleUpdateRegularMeeting_(p), p);
       case 'deleteRegularMeeting': return wrap_(handleDeleteRegularMeeting_(p), p);
       case 'toggleMeetingCancel': return wrap_(handleToggleMeetingCancel_(p), p);
       case 'updatePdfTags': return wrap_(handleUpdatePdfTags_(p), p);
@@ -2083,6 +2092,17 @@ function handleDeleteRegularMeeting_(p) {
   if (idx < 0) return { success: false, error: '找不到集會規則' };
   getSheet_('RegularMeetings').deleteRow(idx + 1);
   writeAudit_(p.operatedBy || 'system', 'deleteRegularMeeting', 'RegularMeetings', p.meetingId, '');
+  return { success: true };
+}
+
+function handleUpdateRegularMeeting_(p) {
+  var fields = ['branchId', 'title', 'weekday', 'frequency', 'startTime', 'endTime', 'location', 'enabled'];
+  fields.forEach(function (f) {
+    if (p[f] !== undefined && p[f] !== null) {
+      updateCellByName_('RegularMeetings', 'meetingId', p.meetingId, f, p[f]);
+    }
+  });
+  writeAudit_(p.operatedBy || 'system', 'updateRegularMeeting', 'RegularMeetings', p.meetingId, '');
   return { success: true };
 }
 
