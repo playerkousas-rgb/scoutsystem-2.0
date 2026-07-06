@@ -5,6 +5,8 @@ import Auth from '@/components/Auth';
 import { FeatureCard, SummaryCard } from '@/components/Cards';
 import PluginIframeCard from '@/components/PluginCard';
 import { getSession } from '@/lib/session';
+import { ROLE_LABEL } from '@/lib/model';
+import Link from 'next/link';
 
 export default function Leader(){
   const [s,setS]=useState<AppState|null>(null);const [err,setErr]=useState('');

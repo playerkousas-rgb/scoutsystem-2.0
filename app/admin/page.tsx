@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import Auth from '@/components/Auth';
 import { FeatureCard, SummaryCard } from '@/components/Cards';
 import { AppState, loadState, computeStats } from '@/lib/store';
-import { isAdmin } from '@/lib/model';
+import { isAdmin, ROLE_LABEL } from '@/lib/model';
+import Link from 'next/link';
 
 // 功能定義：未來插件也會動態加入
 const FEATURE_DEFS: Record<string,{title:string;icon:string;text:string;href:string}> = {
