@@ -169,15 +169,15 @@ function getInitialSheets_() {
     ],
     Patrols: [
       ['patrolId', 'branchId', 'name', 'shortName', 'leaderMemberId', 'deputyLeaderMemberId', 'memberIds', 'enabled', 'order', 'note'],
-      ['p1', 'b2', '紅', 'R', '', '', '', true, 1, '幼童軍顏色分隊。'],
-      ['p2', 'b2', '黃', 'Y', '', '', '', true, 2, '幼童軍顏色分隊。'],
-      ['p3', 'b2', '藍', 'B', '', '', '', true, 3, '幼童軍顏色分隊。'],
-      ['p4', 'b2', '白', 'W', '', '', '', true, 4, '幼童軍顏色分隊。'],
-      ['p5', 'b2', '灰', 'GY', '', '', '', true, 5, '幼童軍顏色分隊。'],
-      ['p6', 'b2', '綠', 'G', '', '', '', true, 6, '幼童軍顏色分隊。'],
-      ['p7', 'b2', '棕', 'BR', '', '', '', true, 7, '幼童軍顏色分隊。'],
-      ['p8', 'b2', '黑', 'BK', '', '', '', true, 8, '幼童軍顏色分隊。'],
-      ['p9', 'b2', '橙', 'O', '', '', '', true, 9, '幼童軍顏色分隊。'],
+      ['p1', 'b2', '紅', 'R', '', '', '', true, 1, '幼童軍九色小隊。'],
+      ['p2', 'b2', '黃', 'Y', '', '', '', true, 2, '幼童軍九色小隊。'],
+      ['p3', 'b2', '藍', 'B', '', '', '', true, 3, '幼童軍九色小隊。'],
+      ['p4', 'b2', '白', 'W', '', '', '', true, 4, '幼童軍九色小隊。'],
+      ['p5', 'b2', '灰', 'GY', '', '', '', true, 5, '幼童軍九色小隊。'],
+      ['p6', 'b2', '綠', 'G', '', '', '', true, 6, '幼童軍九色小隊。'],
+      ['p7', 'b2', '棕', 'BR', '', '', '', true, 7, '幼童軍九色小隊。'],
+      ['p8', 'b2', '黑', 'BK', '', '', '', true, 8, '幼童軍九色小隊。'],
+      ['p9', 'b2', '橙', 'O', '', '', '', true, 9, '幼童軍九色小隊。'],
       ['p10', 'b3', 'TIGER', 'T', '', '', '', true, 1, '童軍動物小隊。'],
       ['p11', 'b3', 'SEAGULL', 'S', '', '', '', true, 2, '童軍動物小隊。'],
       ['p12', 'b3', 'WOLF', 'W', '', '', '', true, 3, '童軍動物小隊。']
@@ -1356,6 +1356,7 @@ function doGet(e) {
       case 'createUser': return wrap_(handleCreateUser_(p), p);
       case 'createPatrol': return wrap_(handleCreatePatrol_(p), p);
       case 'togglePatrol': return wrap_(handleTogglePatrol_(p), p);
+      case 'deletePatrol': return wrap_(handleDeletePatrol_(p), p);
       case 'importBookmark': return wrap_(handleImportBookmark_(p), p);
       case 'toggleRegularMeeting': return wrap_(handleToggleRegularMeeting_(p), p);
       case 'createRegularMeeting': return wrap_(handleCreateRegularMeeting_(p), p);
@@ -2049,6 +2050,14 @@ function handleTogglePatrol_(p) {
   var current = parseBool_(getField_(patrol, 'enabled'));
   updateCellByName_('Patrols', 'patrolId', p.patrolId, 'enabled', String(!current));
   writeAudit_(p.operatedBy || 'system', 'togglePatrol', 'Patrols', p.patrolId, 'enabled=' + !current);
+  return { success: true };
+}
+
+function handleDeletePatrol_(p) {
+  var idx = findRowIndexById_('Patrols', 'patrolId', p.patrolId);
+  if (idx < 0) return { success: false, error: '找不到小隊' };
+  getSheet_('Patrols').deleteRow(idx + 1);
+  writeAudit_(p.operatedBy || 'system', 'deletePatrol', 'Patrols', p.patrolId, '');
   return { success: true };
 }
 

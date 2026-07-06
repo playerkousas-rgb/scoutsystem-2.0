@@ -91,7 +91,10 @@ async function apiMutate(action: string, params: Record<string, string | undefin
   if (typeof window !== 'undefined' && (window as any)._scout_submitting) {
     throw new Error('請稍候，正在處理上一筆請求...');
   }
-  if (typeof window !== 'undefined') (window as any)._scout_submitting = true;
+  if (typeof window !== 'undefined') {
+    (window as any)._scout_submitting = true;
+    window.dispatchEvent(new CustomEvent('scout:loading-start', { detail: { action } }));
+  }
 
   try {
     const user = currentUser();
@@ -100,7 +103,10 @@ async function apiMutate(action: string, params: Record<string, string | undefin
     if (!data.success || !data.state) throw new Error(data.error || action + ' 失敗');
     return data.state;
   } finally {
-    if (typeof window !== 'undefined') (window as any)._scout_submitting = false;
+    if (typeof window !== 'undefined') {
+      (window as any)._scout_submitting = false;
+      window.dispatchEvent(new CustomEvent('scout:loading-end'));
+    }
   }
 }
 
@@ -195,6 +201,9 @@ export function apiCreatePatrol(p: { branchId: string; name: string; short?: str
 }
 export function apiTogglePatrol(patrolId: string) {
   return apiMutate('togglePatrol', { patrolId });
+}
+export function apiDeletePatrol(patrolId: string) {
+  return apiMutate('deletePatrol', { patrolId });
 }
 
 // ==================== 圖書館標記 ====================

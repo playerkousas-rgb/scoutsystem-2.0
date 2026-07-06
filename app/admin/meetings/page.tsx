@@ -91,6 +91,7 @@ export default function MeetingsAdmin() {
               <h3>{m.title}</h3>
               <p className="muted">{m.date} {m.startTime}-{m.endTime} | {m.location || '待定'}</p>
               <p className="muted">對象：{m.targetRoles?.join(', ') || '全體'}</p>
+              {m.url && <a href={m.url} target="_blank" rel="noopener noreferrer" className="btn gold" style={{display:'inline-block', marginTop: 8, fontSize: '0.85rem'}}>📄 查看會議文件</a>}
             </div>
             <div className="row">
               {m.status === 'draft' && <button className="btn primary" onClick={async () => setS(await apiPublishMeeting(m.id))}>發布</button>}
