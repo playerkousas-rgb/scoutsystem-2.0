@@ -20,7 +20,7 @@ export default function Page(){
     <section className="grid">{branches.map(b=><button className={`card ${selected===b.id?'notice-mode active':''}`} key={b.id} onClick={()=>setSelected(b.id)} style={{textAlign:'left'}}><span className="badge blue">{b.id}</span><h3>{b.name}</h3><p className="muted">{branchHint(b.id)}</p></button>)}</section>
     <section className="grid-wide"><div className="card stack"><h2>{branches.find(b=>b.id===selected)?.name} · 小隊設定</h2><p className="muted">{branchHint(selected)}</p>
       {ps.length===0?<div className="card" style={{boxShadow:'none',background:'#f8fafc'}}><strong>此支部目前沒有分隊。</strong></div>:
-      <table className="table"><thead><tr><th>名稱</th><th>簡稱</th><th>隊長長</th><th>成員數</th><th>狀態</th><th>操作</th></tr></thead><tbody>{ps.map((p)=><tr key={p.id}><td>{p.name}</td><td>{p.short}</td><td>{memberName(p.leaderMemberId)}</td><td>{s.members.filter(m=>m.patrolId===p.id).length}</td><td>{p.enabled?<span className="badge green">啟用</span>:<span className="badge red">停用</span>}</td><td>
+      <table className="table"><thead><tr><th>名稱</th><th>簡稱</th><th>隊長</th><th>成員數</th><th>狀態</th><th>操作</th></tr></thead><tbody>{ps.map((p)=><tr key={p.id}><td>{p.name}</td><td>{p.short}</td><td>{memberName(p.leaderMemberId)}</td><td>{s.members.filter(m=>m.patrolId===p.id).length}</td><td>{p.enabled?<span className="badge green">啟用</span>:<span className="badge red">停用</span>}</td><td>
         <button className="btn" disabled={loadingId===p.id} onClick={()=>toggle(p.id)}>{loadingId===p.id?'⏳ 中...':(p.enabled?'停用':'啟用')}</button>{' '}
         <button className="btn red" disabled={loadingId===p.id+'del'} onClick={()=>del(p.id,p.name)}>{loadingId===p.id+'del'?'⏳ 刪除中...':'🗑️ 刪除'}</button>
       </td></tr>)}</tbody></table>}
