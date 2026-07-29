@@ -1354,6 +1354,8 @@ function doGet(e) {
       case 'updateUserField': return wrap_(handleUpdateUserField_(p), p);
       case 'deleteUser': return wrap_(handleDeleteUser_(p), p);
       case 'createUser': return wrap_(handleCreateUser_(p), p);
+      case 'batchCreateUsers': return wrap_(handleBatchCreateUsers_(p), p);
+      case 'batchCreateMembers': return wrap_(handleBatchCreateMembers_(p), p);
       case 'createPatrol': return wrap_(handleCreatePatrol_(p), p);
       case 'togglePatrol': return wrap_(handleTogglePatrol_(p), p);
       case 'deletePatrol': return wrap_(handleDeletePatrol_(p), p);
@@ -1684,12 +1686,18 @@ function doPost(e) {
     try { p = JSON.parse(e.postData.contents); } catch (err) {
       p = (e && e.parameter) || {};
     }
+  } else {
+    p = (e && e.parameter) || {};
   }
+
+  // Legacy public library import: keep accepting unauthenticated POST from scout-circulars.
   if (!p.action) p.action = 'importFromLibrary';
-  if (!p.action || p.action === 'importFromLibrary') {
+  if (p.action === 'importFromLibrary' && !p.apiKey) {
     return json(handleImportFromLibrary_(p));
   }
-  return doGet(e);
+
+  // For all modern POST actions, reuse the same API-key check and switch as doGet.
+  return doGet({ parameter: p });
 }
 
 function handleDecideApplication_(p) {
@@ -1810,7 +1818,7 @@ function handleCreateMember_(p) {
   var id = uid_('m');
   appendRowByHeaders_('Members', {
     memberId: id, ymNumber: p.ymNumber || '', password: p.password || p.ymNumber || '',
-    name: p.name || '',
+    name: p.name || '', email: p.email || '',
     branchId: p.branchId || '', patrolId: p.patrolId || '',
     patrolRole: p.patrolRole || (p.patrolId ? 'member' : ''),
     specialRole: p.specialRole || '',
@@ -2007,6 +2015,130 @@ function handleCreateUser_(p) {
   });
   writeAudit_(p.operatedBy || 'system', 'createUser', 'Users', id, (p.name || '') + ' ' + (p.role || ''));
   return { success: true };
+}
+
+function parseRowsParam_(rows) {
+  if (!rows) return [];
+  if (Array.isArray(rows)) return rows;
+  if (typeof rows === 'string') {
+    try {
+      var parsed = JSON.parse(rows);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (err) {
+      return [];
+    }
+  }
+  return [];
+}
+
+function canBatchManage_(operatedBy) {
+  if (!operatedBy || operatedBy === 'system' || operatedBy === 'staff_token') return true;
+  if (TECH_TEST_ACCOUNTS_.indexOf(operatedBy) >= 0) return true;
+  var users = mapUsers_();
+  var operator = users.filter(function (u) { return u.id === operatedBy; })[0];
+  if (!operator) return false;
+  return ['super_admin', 'troop_super', 'admin', 'group_leader', 'branch_leader'].indexOf(operator.role) >= 0;
+}
+
+function handleBatchCreateUsers_(p) {
+  var operatedBy = p.operatedBy || 'system';
+  if (!canBatchManage_(operatedBy)) return { success: false, error: '你沒有權限批量開戶。' };
+
+  var rows = parseRowsParam_(p.rows);
+  if (!rows.length) return { success: false, error: '沒有可匯入的帳號資料。' };
+  if (rows.length > 300) return { success: false, error: '一次最多批量建立 300 個帳號，請分批匯入。' };
+
+  var users = readTable_('Users');
+  var existingEmails = {};
+  var existingIds = {};
+  users.forEach(function (u) {
+    var email = String(getField_(u, 'email') || '').trim().toLowerCase();
+    var id = String(getField_(u, 'userId') || '').trim();
+    if (email) existingEmails[email] = true;
+    if (id) existingIds[id] = true;
+  });
+
+  var allowedRoles = ['troop_super', 'admin', 'group_leader', 'branch_leader', 'coach', 'parent', 'member'];
+  var created = 0, skipped = 0;
+  var errors = [];
+
+  rows.forEach(function (raw, idx) {
+    var name = String(raw.name || '').trim();
+    var email = String(raw.email || '').trim();
+    var emailKey = email.toLowerCase();
+    var role = String(raw.role || 'parent').trim() || 'parent';
+    var rowNo = idx + 1;
+
+    if (!name || !email) { skipped++; errors.push('第 ' + rowNo + ' 行：缺少姓名或 Email'); return; }
+    if (existingEmails[emailKey]) { skipped++; errors.push('第 ' + rowNo + ' 行：Email 已存在（' + email + '）'); return; }
+    if (allowedRoles.indexOf(role) < 0) role = 'parent';
+    if (role === 'troop_super' && operatedBy !== 'system' && operatedBy !== 'staff_token' && TECH_TEST_ACCOUNTS_.indexOf(operatedBy) < 0) role = 'admin';
+
+    var id = raw.userId ? String(raw.userId).trim() : uid_('u');
+    while (existingIds[id]) id = uid_('u');
+
+    appendRowByHeaders_('Users', {
+      userId: id, name: name, email: email, password: raw.password || 'changeme',
+      role: role, branchId: raw.branchId || '', memberId: raw.memberId || '',
+      approved: raw.approved === false || raw.approved === 'false' ? false : true,
+      createdAt: now_(), note: '批量開戶；由 ' + operatedBy + ' 建立'
+    });
+    existingEmails[emailKey] = true;
+    existingIds[id] = true;
+    created++;
+  });
+
+  writeAudit_(operatedBy, 'batchCreateUsers', 'Users', '', 'created=' + created + ', skipped=' + skipped);
+  return { success: true, created: created, skipped: skipped, errors: errors.slice(0, 30) };
+}
+
+function handleBatchCreateMembers_(p) {
+  var operatedBy = p.operatedBy || 'system';
+  if (!canBatchManage_(operatedBy)) return { success: false, error: '你沒有權限批量建立成員。' };
+
+  var rows = parseRowsParam_(p.rows);
+  if (!rows.length) return { success: false, error: '沒有可匯入的成員資料。' };
+  if (rows.length > 500) return { success: false, error: '一次最多批量建立 500 名成員，請分批匯入。' };
+
+  var members = readTable_('Members');
+  var existingYm = {};
+  members.forEach(function (m) {
+    var ym = String(getField_(m, 'ymNumber') || '').trim();
+    if (ym) existingYm[ym] = true;
+  });
+
+  var created = 0, skipped = 0;
+  var errors = [];
+  var patrolsToSync = {};
+
+  rows.forEach(function (raw, idx) {
+    var rowNo = idx + 1;
+    var name = String(raw.name || '').trim();
+    var ymNumber = String(raw.ymNumber || raw.ymis || '').trim();
+    var branchId = String(raw.branchId || '').trim();
+    var patrolId = String(raw.patrolId || '').trim();
+
+    if (!name || !ymNumber || !branchId) { skipped++; errors.push('第 ' + rowNo + ' 行：缺少姓名、YMIS 或支部'); return; }
+    if (existingYm[ymNumber]) { skipped++; errors.push('第 ' + rowNo + ' 行：YMIS 已存在（' + ymNumber + '）'); return; }
+
+    var id = uid_('m');
+    appendRowByHeaders_('Members', {
+      memberId: id, ymNumber: ymNumber, password: raw.password || ymNumber,
+      name: name, email: raw.email || '', branchId: branchId, patrolId: patrolId,
+      patrolRole: raw.patrolRole || (patrolId ? 'member' : ''),
+      specialRole: raw.specialRole || '', dateOfBirth: raw.dateOfBirth || '',
+      parentUserId: raw.parentUserId || '', emergencyContactName: raw.emergencyContactName || '',
+      emergencyContactPhone: raw.emergencyContactPhone || '', active: true,
+      note: raw.note || ('批量建立；由 ' + operatedBy + ' 建立')
+    });
+    existingYm[ymNumber] = true;
+    if (patrolId) patrolsToSync[patrolId] = true;
+    created++;
+  });
+
+  Object.keys(patrolsToSync).forEach(function (patrolId) { syncPatrolMembers_(patrolId); });
+  writeAudit_(operatedBy, 'batchCreateMembers', 'Members', '', 'created=' + created + ', skipped=' + skipped);
+  return { success: true, created: created, skipped: skipped, errors: errors.slice(0, 30) };
 }
 
 function handleUpdateUserRole_(p) {

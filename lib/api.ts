@@ -37,6 +37,24 @@ async function apiGet<T = any>(action: string, params?: Record<string, string | 
   return data;
 }
 
+async function apiPost<T = any>(action: string, body: Record<string, any>): Promise<T> {
+  const troopKey = getTroopKey();
+  const url = new URL('/api/proxy', window.location.origin);
+  url.searchParams.set('action', action);
+  url.searchParams.set('troopKey', troopKey || 'unknown');
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...body, action }),
+  });
+  const data = await res.json();
+  if (!data.success && data.error) {
+    throw new Error(data.error);
+  }
+  return data;
+}
+
 function currentUser(): { userId: string; role: Role } | null {
   const s = getSession();
   if (!s) return null;
@@ -86,7 +104,7 @@ export async function apiHealth() {
 
 // ==================== 寫入：通用 mutate ====================
 
-async function apiMutate(action: string, params: Record<string, string | undefined>): Promise<AppState> {
+async function withSubmissionLock<T>(action: string, runner: () => Promise<T>): Promise<T> {
   // Prevent double submissions globally
   if (typeof window !== 'undefined' && (window as any)._scout_submitting) {
     throw new Error('請稍候，正在處理上一筆請求...');
@@ -97,17 +115,33 @@ async function apiMutate(action: string, params: Record<string, string | undefin
   }
 
   try {
-    const user = currentUser();
-    const full = { ...params, operatedBy: user?.userId || params.operatedBy || 'system' };
-    const data = await apiGet<{ success: boolean; state?: AppState; error?: string }>(action, full);
-    if (!data.success || !data.state) throw new Error(data.error || action + ' 失敗');
-    return data.state;
+    return await runner();
   } finally {
     if (typeof window !== 'undefined') {
       (window as any)._scout_submitting = false;
       window.dispatchEvent(new CustomEvent('scout:loading-end'));
     }
   }
+}
+
+async function apiMutate(action: string, params: Record<string, string | undefined>): Promise<AppState> {
+  return withSubmissionLock(action, async () => {
+    const user = currentUser();
+    const full = { ...params, operatedBy: user?.userId || params.operatedBy || 'system' };
+    const data = await apiGet<{ success: boolean; state?: AppState; error?: string }>(action, full);
+    if (!data.success || !data.state) throw new Error(data.error || action + ' 失敗');
+    return data.state;
+  });
+}
+
+async function apiMutatePost(action: string, body: Record<string, any>): Promise<AppState> {
+  return withSubmissionLock(action, async () => {
+    const user = currentUser();
+    const full = { ...body, operatedBy: user?.userId || body.operatedBy || 'system' };
+    const data = await apiPost<{ success: boolean; state?: AppState; error?: string }>(action, full);
+    if (!data.success || !data.state) throw new Error(data.error || action + ' 失敗');
+    return data.state;
+  });
 }
 
 // ==================== 公開 API（不需登入） ====================
@@ -174,6 +208,12 @@ export function apiToggleUser(userId: string) {
 }
 export function apiCreateUser(p: { name: string; email: string; password?: string; role: string; branchId?: string }) {
   return apiMutate('createUser', p as any);
+}
+export function apiBatchCreateUsers(rows: Array<{ name: string; email: string; password?: string; role: string; branchId?: string; memberId?: string; approved?: boolean }>) {
+  return apiMutatePost('batchCreateUsers', { rows });
+}
+export function apiBatchCreateMembers(rows: Array<{ name: string; ymNumber: string; password?: string; email?: string; branchId: string; patrolId?: string; patrolRole?: string; specialRole?: string; dateOfBirth?: string; parentUserId?: string; emergencyContactName?: string; emergencyContactPhone?: string; note?: string }>) {
+  return apiMutatePost('batchCreateMembers', { rows });
 }
 export function apiUpdateUserRole(userId: string, role: string) {
   return apiMutate('updateUserRole', { userId, role });
