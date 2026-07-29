@@ -49,3 +49,10 @@ npm run build
 - 初始化後只顯示小白需要看的分頁：README、SystemConfig、Branches、Patrols、Members
 - 隱藏 Roles、FieldSettings、Users、Applications、Events、EventReplies、LibraryBookmarks、Notices、Plugins、AuditLogs
 - 上方選單 `2026 Scout System` 可顯示 / 隱藏進階分頁及重新格式化
+
+## 本輪完善：全前端控制 / 批量開戶 / 手機友善
+
+- 使用者管理加入「📥 批量開戶」：可下載 CSV 範本、上傳 CSV / JSON、前端預覽及檢查重複 Email / YMIS，然後批量建立帳號及成員。
+- API Proxy 及 Apps Script 後台加入 POST 批量寫入：`batchCreateUsers`、`batchCreateMembers`，避免大型 CSV 受 URL 長度限制。
+- 系統設定頁升級為「全前端控制中心」：提供服務鎖定、SystemConfig 編輯、支部/成員/活動/行事曆/元件快速入口。
+- 全站加入手機友善樣式：導航可橫向滑動、按鈕觸控高度提升、響應式表格在手機以卡片方式顯示。
