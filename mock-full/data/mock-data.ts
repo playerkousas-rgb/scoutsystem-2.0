@@ -125,9 +125,9 @@ export const MOCK_ATTENDANCE: MOCK_Attendance[] = [
   { id: 'AT002', eventId: 'E001', memberId: 'M002', name: '李美麗', branchId: 'B01', patrolId: 'P01', status: 'present', notes: '' },
   { id: 'AT003', eventId: 'E001', memberId: 'M003', name: '王大偉', branchId: 'B01', patrolId: 'P02', status: 'excused', notes: '因病请假' },
   { id: 'AT004', eventId: 'E002', memberId: 'M004', name: '陳智勇', branchId: 'B02', patrolId: 'P03', status: 'present', notes: '' },
-  { id: 'AT005', eventId: 'E002', memberId: 'M005', name: '林欣怡', branchId: 'B02', patrolId: 'P03', status: 'registered', notes: '已報名待確認' },
+  { id: 'AT005', eventId: 'E002', memberId: 'M005', name: '林欣怡', branchId: 'B02', patrolId: 'P03', status: 'late', notes: '遲到十五分鐘' },
   { id: 'AT006', eventId: 'E002', memberId: 'M006', name: '黃家豪', branchId: 'B02', patrolId: 'P04', status: 'present', notes: '' },
-  { id: 'AT007', eventId: 'E003', memberId: 'M001', name: '張小明', branchId: 'B01', patrolId: 'P01', status: 'registered', notes: '' },
+  { id: 'AT007', eventId: 'E003', memberId: 'M001', name: '張小明', branchId: 'B01', patrolId: 'P01', status: 'sick', notes: '病假' },
   { id: 'AT008', eventId: 'E003', memberId: 'M004', name: '陳智勇', branchId: 'B02', patrolId: 'P03', status: 'present', notes: '擔任助教' }
 ];
 

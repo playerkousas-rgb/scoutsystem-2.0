@@ -34,7 +34,7 @@ export interface MOCK_Attendance {
   name: string;
   branchId: string;
   patrolId: string;
-  status: 'present' | 'excused' | 'registered';
+  status: 'present' | 'absent' | 'late' | 'excused' | 'sick';
   notes?: string;
 }
 
@@ -51,8 +51,9 @@ export interface MOCK_Stats {
   dailyCount: number;
   cumulativeCount: number;
   presentCount: number;
-  excusedCount: number;
-  registeredCount: number;
+  absentCount: number;
+  lateCount: number;
+  leaveCount: number;
 }
 
 export type MOCK_Role = 'scout' | 'patrol_leader' | 'troop_leader' | 'admin';

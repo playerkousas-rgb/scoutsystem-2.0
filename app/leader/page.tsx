@@ -9,6 +9,7 @@ import Collapsible from '@/components/Collapsible';
 import { getSession } from '@/lib/session';
 import { ROLE_LABEL } from '@/lib/model';
 import Link from 'next/link';
+import AttendanceCard from '@/components/AttendanceCard';
 
 export default function Leader(){
   const [s,setS]=useState<AppState|null>(null);const [err,setErr]=useState('');
@@ -50,7 +51,7 @@ export default function Leader(){
       <section className="stack">
         <h3>擴充元件</h3>
         <div className="grid">
-          {s.plugins.map(p => (
+          {s.plugins.filter(p => p.id !== 'troop_attendance').map(p => (
             <PluginIframeCard 
               key={p.id} 
               plugin={p} 
@@ -106,6 +107,7 @@ export default function Leader(){
     </Collapsible>
 
     <section className="grid" style={{ marginTop: '2rem' }}>
+      <AttendanceCard />
       <FeatureCard title="成員資料庫" icon="👥" text="查看及管理所屬支部成員。" href="/admin/members"/>
       <FeatureCard title="活動管理" icon="🗓️" text="新增、發布及管理活動。" href="/admin/events"/>
       <FeatureCard title="報名管理" icon="📋" text="查看報名狀態及匯出。" href="/admin/registrations"/>

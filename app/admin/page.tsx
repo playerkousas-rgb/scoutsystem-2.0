@@ -5,6 +5,7 @@ import { FeatureCard, SummaryCard } from '@/components/Cards';
 import { AppState, loadState, computeStats } from '@/lib/store';
 import { isAdmin, ROLE_LABEL } from '@/lib/model';
 import Link from 'next/link';
+import AttendanceCard from '@/components/AttendanceCard';
 
 // 功能定義：未來插件也會動態加入
 const FEATURE_DEFS: Record<string,{title:string;icon:string;text:string;href:string}> = {
@@ -12,7 +13,7 @@ const FEATURE_DEFS: Record<string,{title:string;icon:string;text:string;href:str
   members:        { title:'成員資料庫', icon:'👥', text:'新增、編輯、連結家長。', href:'/admin/members' },
   applications:   { title:'審核 / 申請管理', icon:'✅', text:'審核申請，批核後自動建帳號。', href:'/admin/applications' },
   events:         { title:'活動管理', icon:'🗓️', text:'新增、編輯、發布活動。', href:'/admin/events' },
-  registrations:  { title:'點名簽到與報名管理', icon:'📍', text:'現場點名簽到卡片、考勤對賬與 CSV 匯出。', href:'/admin/registrations' },
+  registrations:  { title:'報名管理', icon:'📋', text:'旅團及外間活動的報名狀態、付款與匯出。', href:'/admin/registrations' },
   meetings:       { title:'會議管理', icon:'🤝', text:'會議議程及紀錄。', href:'/admin/meetings' },
   library_import: { title:'圖書館引入', icon:'📚', text:'由通告圖書館引入。', href:'/library/import' },
   notices:        { title:'通告管理', icon:'📄', text:'上傳通告、Drive PDF。', href:'/notices' },
@@ -65,6 +66,7 @@ export default function Admin(){
       <a href="/notices"><SummaryCard label="通告" value={stats.notices} desc="通告數" tone="gold"/></a>
     </section>
     <section className="grid">
+      <AttendanceCard />
       {renderFeatureCards()}
     </section>
   </div></Auth>;
