@@ -6,6 +6,7 @@ import { getSession } from '@/lib/session';
 import Collapsible from '@/components/Collapsible';
 import PluginIframeCard from '@/components/PluginCard';
 import Link from 'next/link';
+import AttendanceCard from '@/components/AttendanceCard';
 
 export default function Member(){
   const [s,setS]=useState<AppState|null>(null);const [err,setErr]=useState('');
@@ -25,6 +26,8 @@ export default function Member(){
   
   // Filter plugins by role and branch if needed
   const visiblePlugins = s.plugins.filter(p => {
+    // troop-attendance 已由固定的獨立點名卡片提供，避免安裝後重複顯示。
+    if (p.id === 'troop_attendance') return false;
     // Example: vs_badge_tracker only for Venture (b4)
     if (p.id === 'vs_badge_tracker' && member.branchId !== 'b4') return false;
     return true;
@@ -51,8 +54,8 @@ export default function Member(){
 
       {err&&<p className="badge red">{err}</p>}
 
-      {visiblePlugins.length > 0 && (
-        <section className="grid" style={{ marginBottom: '2rem' }}>
+      <section className="grid" style={{ marginBottom: '2rem' }}>
+          <AttendanceCard description="查看自己在日常集會及旅團自辦活動的出席紀錄。" />
           {visiblePlugins.map(p => (
             <PluginIframeCard 
               key={p.id} 
@@ -62,7 +65,6 @@ export default function Member(){
             />
           ))}
         </section>
-      )}
 
       <Collapsible title="📢 活動與集會" defaultOpen={true}>
         <p className="muted">{adult?'你已 18 歲或以上，可自行 ✅ / ❌。':'你未滿 18 歲，可按 ❤️ 表示有興趣；參加 / 不參加由家長決定。'}</p>

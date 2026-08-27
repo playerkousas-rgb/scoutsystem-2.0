@@ -15,16 +15,11 @@ const GROUP_DEFS = [
 ];
 
 function RegistrationsInner(){
-  const [s,setS]=useState<AppState|null>(null);
-  const [err,setErr]=useState('');
+  const [s,setS]=useState<AppState|null>(null);const [err,setErr]=useState('');
   const search=useSearchParams();
   const [eventId,setEventId]=useState('');
   const [paidOverrides, setPaidOverrides] = useState<Record<string, boolean>>({});
   const [loadingBatch, setLoadingBatch] = useState(false);
-
-  // 現場點名與簽到狀態 (Live Check-In State)
-  const [checkInMap, setCheckInMap] = useState<Record<string, boolean>>({});
-  const [cardFilter, setCardFilter] = useState<'all' | 'checked_in' | 'pending' | 'registered'>('all');
   
   // Interactive expansion states
   const [expandedOverallStatus, setExpandedOverallStatus] = useState<string | null>(null);
@@ -32,21 +27,8 @@ function RegistrationsInner(){
   const [expandedBranchStatus, setExpandedBranchStatus] = useState<{ branchId: string; status: string } | null>(null);
   const [activeListTab, setActiveListTab] = useState<string>('all');
 
-  useEffect(()=>{
-    loadState().then(st=>{
-      setS(st);
-      const q=search?.get('eventId');
-      setEventId(q||st.events[0]?.id||'');
-    }).catch(e=>setErr(e.message));
-  },[]);
-
-  async function togglePaid(mid:string){
-    setErr('');
-    try{
-      const f=await apiTogglePaid(eventId,mid);
-      setS(f);
-    }catch(e:any){setErr(e.message)}
-  }
+  useEffect(()=>{loadState().then(st=>{setS(st);const q=search?.get('eventId');setEventId(q||st.events[0]?.id||'')}).catch(e=>setErr(e.message))},[]);
+  async function togglePaid(mid:string){setErr('');try{const f=await apiTogglePaid(eventId,mid);setS(f)}catch(e:any){setErr(e.message)}}
 
   function getIsPaid(mid: string) {
     if (!s) return false;
@@ -58,10 +40,6 @@ function RegistrationsInner(){
   function toggleLocalPaid(mid: string) {
     const cur = getIsPaid(mid);
     setPaidOverrides(prev => ({ ...prev, [mid]: !cur }));
-  }
-
-  function toggleCheckIn(mid: string) {
-    setCheckInMap(prev => ({ ...prev, [mid]: !prev[mid] }));
   }
 
   async function saveBatchPaid() {
@@ -107,26 +85,24 @@ function RegistrationsInner(){
   function csv(){
     if(!s || !event) return;
     const tabName = activeListTab === 'all' ? '全部總合' : GROUP_DEFS.find(g=>g.id===activeListTab)?.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g,'') || activeListTab;
-    const rows=[['姓名','YMIS','所屬單位','小隊/職務','現場點名簽到','回覆出席狀態','緊急聯絡人','緊急電話','付款核對狀態']];
+    const rows=[['姓名','YMIS','所屬單位','小隊/職務','回覆出席狀態','緊急聯絡人','緊急電話','付款核對狀態']];
     displayTargets.forEach(m => {
       const r=replyStatus(s,eventId,m.id);
       const p=s.patrols.find(x=>x.id===m.patrolId);
       const st = r?.type === 'registered' ? '確定參加' : r?.type === 'declined' ? '婉拒不參加' : r?.type === 'interested' ? '有興趣(待確認)' : '尚未回覆';
       const pd = getIsPaid(m.id) ? '已完成付款' : '未付款';
-      const chk = checkInMap[m.id] ? '已現場簽到' : '未現場簽到';
       const bName = GROUP_DEFS.find(g=>g.id===m.branchId)?.full || m.branchId;
       const pName = m.isLeader ? '領袖團隊' : m.isParent ? '家長' : (p?.name || '未分小隊');
-      rows.push([m.name, m.ymNumber, bName, pName, chk, st, m.emergencyContactName||'', m.emergencyContactPhone||'', pd]);
+      rows.push([m.name, m.ymNumber, bName, pName, st, m.emergencyContactName||'', m.emergencyContactPhone||'', pd]);
     });
     const blob=new Blob(['\ufeff'+rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n')],{type:'text/csv'});
-    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${event.title}_${tabName}_考勤點名簽到表.csv`;a.click();URL.revokeObjectURL(url);
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${event.title}_${tabName}_報名名單.csv`;a.click();URL.revokeObjectURL(url);
   }
 
-  let totalYes = 0, totalHeart = 0, totalNo = 0, totalPending = 0, totalPaid = 0, totalCheckedIn = 0;
+  let totalYes = 0, totalHeart = 0, totalNo = 0, totalPending = 0, totalPaid = 0;
   unifiedTargets.forEach(m => {
     const r = replyStatus(s, eventId, m.id);
     if (getIsPaid(m.id)) totalPaid++;
-    if (checkInMap[m.id]) totalCheckedIn++;
     if (r?.type === 'registered') totalYes++;
     else if (r?.type === 'interested') totalHeart++;
     else if (r?.type === 'declined') totalNo++;
@@ -137,9 +113,9 @@ function RegistrationsInner(){
 
   return <div className="stack">
     <section className="hero">
-      <span className="badge gold">點名簽到與報名管理</span>
-      <h1>📍 現場點名簽到與活動報名對賬</h1>
-      <p>現場簽到點名卡片系統：點選「📍 點名簽到」按鈕即可即時登錄現場出席，並支援 7 大支部直式對賬與 CSV 匯出。</p>
+      <span className="badge gold">報名統計與分層對賬</span>
+      <h1>活動報名名單與分層對賬管理</h1>
+      <p>雙下拉選單分流自辦與外部通告，7大直式格完整呈現各支部與領袖出席，點選狀態即可展開具體名單，雙大格直列童軍及幼童軍成員意願與付款。</p>
     </section>
     {err&&<p className="badge red">{err}</p>}
 
@@ -162,115 +138,6 @@ function RegistrationsInner(){
     </section>
 
     {event&&<>
-    
-    {/* 📍 現場點名與簽到卡片專區 (Live Attendance Check-In Cards) */}
-    <section className="card stack" style={{ background: '#f0fdf4', border: '2px solid #22c55e' }}>
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-        <div>
-          <h2 style={{ margin: 0, color: '#15803d', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>📍 現場點名與簽到卡片</span>
-            <span className="badge green" style={{ fontSize: '0.85rem' }}>即時簽到卡片</span>
-          </h2>
-          <p className="muted" style={{ margin: '4px 0 0 0' }}>
-            點選各卡片上的 **【📍 點名簽到】** 按鈕，即可快速清點現場出席人數（已現場簽到：{totalCheckedIn} / {unifiedTargets.length} 人）。
-          </p>
-        </div>
-        
-        {/* 過濾按鈕 */}
-        <div className="row" style={{ gap: 6 }}>
-          <button className={`btn ${cardFilter==='all'?'primary':''}`} onClick={()=>setCardFilter('all')}>全體卡片 ({unifiedTargets.length})</button>
-          <button className={`btn ${cardFilter==='checked_in'?'green':''}`} style={cardFilter==='checked_in'?{background:'#16a34a',color:'#fff'}:{}} onClick={()=>setCardFilter('checked_in')}>🟢 已現場簽到 ({totalCheckedIn})</button>
-          <button className={`btn ${cardFilter==='pending'?'gold':''}`} onClick={()=>setCardFilter('pending')}>⚠️ 尚未簽到 ({unifiedTargets.length - totalCheckedIn})</button>
-        </div>
-      </div>
-
-      {/* 簽到卡片 Grid 網格 */}
-      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12, marginTop: 12 }}>
-        {unifiedTargets
-          .filter(m => {
-            if (cardFilter === 'checked_in') return checkInMap[m.id];
-            if (cardFilter === 'pending') return !checkInMap[m.id];
-            return true;
-          })
-          .map(m => {
-            const r = replyStatus(s, eventId, m.id);
-            const p = s.patrols.find(x => x.id === m.patrolId);
-            const isCheckedIn = !!checkInMap[m.id];
-            const isPaidCur = getIsPaid(m.id);
-            const branchObj = GROUP_DEFS.find(g => g.id === m.branchId);
-
-            return (
-              <div
-                key={m.id}
-                className="card stack"
-                style={{
-                  padding: '14px',
-                  borderRadius: '10px',
-                  background: isCheckedIn ? '#f0fdf4' : '#ffffff',
-                  border: isCheckedIn ? '2px solid #16a34a' : '1px solid #cbd5e1',
-                  boxShadow: isCheckedIn ? '0 2px 8px rgba(22,163,74,0.15)' : '0 1px 3px rgba(0,0,0,0.05)',
-                  position: 'relative'
-                }}
-              >
-                {/* 頂部標籤與標題 */}
-                <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', backgroundColor: branchObj?.color || '#64748b', color: '#fff', marginBottom: '4px', display: 'inline-block' }}>
-                      {branchObj?.name || m.branchId}
-                    </span>
-                    <h3 style={{ margin: '4px 0 0 0', fontSize: '1.1rem', color: '#0f172a' }}>{m.name}</h3>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                      {m.isLeader ? '👔 領袖出席' : m.isParent ? '👨‍👩‍👧 家長出席' : (p ? `${p.name}小隊` : '未分小隊')} | YMIS: {m.ymNumber}
-                    </div>
-                  </div>
-
-                  {/* 簽到狀態 Badge */}
-                  <div>
-                    {isCheckedIn ? (
-                      <span className="badge green" style={{ fontWeight: 'bold', fontSize: '0.85rem', padding: '4px 8px' }}>
-                        🟢 已現場簽到
-                      </span>
-                    ) : (
-                      <span className="badge" style={{ background: '#f1f3f4', color: '#64748b', fontSize: '0.8rem', padding: '4px 8px' }}>
-                        ⚠️ 未簽到
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* 報名與付款概況小標註 */}
-                <div className="row" style={{ gap: 6, fontSize: '0.8rem', marginTop: '4px' }}>
-                  <span style={{ color: r?.type === 'registered' ? '#166534' : r?.type === 'declined' ? '#991b1b' : '#b45309' }}>
-                    線上報名: {r?.type === 'registered' ? '✅ 確定參加' : r?.type === 'declined' ? '❌ 婉拒' : r?.type === 'interested' ? '❤️ 有興趣' : '⚠️ 尚未回覆'}
-                  </span>
-                  <span>|</span>
-                  <span>{isPaidCur ? '💰 已付款' : '❌ 未付款'}</span>
-                </div>
-
-                {/* 按鈕動作列 */}
-                <div className="row" style={{ gap: 8, marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #f1f5f9' }}>
-                  <button
-                    className={`btn ${isCheckedIn ? 'red' : 'primary'}`}
-                    style={{ flex: 1, fontSize: '0.85rem', padding: '6px 10px', fontWeight: 'bold', backgroundColor: isCheckedIn ? '#dc2626' : '#16a34a', borderColor: isCheckedIn ? '#dc2626' : '#16a34a' }}
-                    onClick={() => toggleCheckIn(m.id)}
-                  >
-                    {isCheckedIn ? '✕ 取消簽到' : '📍 點名簽到'}
-                  </button>
-                  <button
-                    className={`btn ${isPaidCur ? 'gold' : ''}`}
-                    style={{ fontSize: '0.8rem', padding: '6px 10px' }}
-                    onClick={() => toggleLocalPaid(m.id)}
-                  >
-                    {isPaidCur ? '💰 已付' : '未付'}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-      </div>
-    </section>
-
-    {/* 總體報名與付款概況 */}
     <section className="card stack" style={{ background: '#f8fafc', borderLeft: '6px solid #1a73e8' }}>
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ margin: 0 }}>📊 總體報名與付款概況 — {event.title}</h2>
@@ -325,85 +192,101 @@ function RegistrationsInner(){
       )}
     </section>
 
-    {/* 第一層：7格直式支部、領袖與家長統計 */}
+    {/* 2. 第一層：7格直式支部、領袖與家長統計 */}
     <section className="card stack">
       <h3>🏢 第一層：各支部、領袖與家長出席報名統計 (共7格直式呈現)</h3>
       <p className="muted">點選卡片內具體欄位（如「✅ 確定」或「💰 付款」）即可立即在下方展開該支部的對應人員名字。</p>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
         {GROUP_DEFS.map(g => {
-          const gMembers = unifiedTargets.filter(m => m.branchId === g.id);
-          let yesCnt = 0, heartCnt = 0, noCnt = 0, pendCnt = 0, paidCnt = 0;
-          gMembers.forEach(m => {
+          const grpMembers = unifiedTargets.filter(m => m.branchId === g.id);
+          let yes=0, no=0, heart=0, pend=0, paid=0;
+          grpMembers.forEach(m => {
             const r = replyStatus(s, eventId, m.id);
-            if (getIsPaid(m.id)) paidCnt++;
-            if (r?.type === 'registered') yesCnt++;
-            else if (r?.type === 'interested') heartCnt++;
-            else if (r?.type === 'declined') noCnt++;
-            else pendCnt++;
+            if (getIsPaid(m.id)) paid++;
+            if (r?.type === 'registered') yes++;
+            else if (r?.type === 'declined') no++;
+            else if (r?.type === 'interested') heart++;
+            else pend++;
           });
-
+          const isExp = expandedGroup === g.id;
           return (
-            <div key={g.id} className="card stack" style={{ borderTop: `4px solid ${g.color}`, background: '#fff', padding: 12 }}>
-              <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                <strong style={{ fontSize: '0.95rem', color: g.color }}>{g.name}</strong>
-                <span className="badge" style={{ fontSize: '0.75rem' }}>{gMembers.length} 人</span>
-              </div>
-
-              <div className="stack" style={{ gap: 4, marginTop: 6, fontSize: '0.82rem' }}>
-                <div className="row" style={{ justifyContent: 'space-between', cursor: 'pointer', background: '#f0fdf4', padding: '2px 6px', borderRadius: 4 }} onClick={() => setExpandedBranchStatus({ branchId: g.id, status: 'registered' })}>
-                  <span>✅ 確定參加</span>
-                  <strong>{yesCnt}</strong>
+            <div className="card stack" key={g.id} style={{ padding: 12, borderTop: `5px solid ${g.color}`, background: isExp ? '#fffef0' : '#fff' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '1rem', color: g.color }}>{g.name}</div>
+              <div className="muted" style={{ fontSize: '0.82rem' }}>共 {grpMembers.length} 人</div>
+              <div style={{ fontSize: '0.88rem', lineHeight: '1.9', margin: '4px 0' }}>
+                <div style={{cursor:'pointer', padding:'1px 4px', borderRadius:4, background:expandedBranchStatus?.branchId===g.id&&expandedBranchStatus.status==='registered'?'#e6f4ea':'transparent'}} onClick={()=>setExpandedBranchStatus(expandedBranchStatus?.branchId===g.id&&expandedBranchStatus.status==='registered'?null:{branchId:g.id,status:'registered'})}>
+                  ✅ 確定：<strong style={{color:'#137333'}}>{yes}</strong> 人
                 </div>
-                <div className="row" style={{ justifyContent: 'space-between', cursor: 'pointer', background: '#fff1f2', padding: '2px 6px', borderRadius: 4 }} onClick={() => setExpandedBranchStatus({ branchId: g.id, status: 'declined' })}>
-                  <span>❌ 婉拒不參加</span>
-                  <strong>{noCnt}</strong>
+                <div style={{cursor:'pointer', padding:'1px 4px', borderRadius:4, background:expandedBranchStatus?.branchId===g.id&&expandedBranchStatus.status==='declined'?'#fce8e6':'transparent'}} onClick={()=>setExpandedBranchStatus(expandedBranchStatus?.branchId===g.id&&expandedBranchStatus.status==='declined'?null:{branchId:g.id,status:'declined'})}>
+                  ❌ 婉拒：<strong style={{color:'#c5221f'}}>{no}</strong> 人
                 </div>
-                <div className="row" style={{ justifyContent: 'space-between', cursor: 'pointer', background: '#fffbeb', padding: '2px 6px', borderRadius: 4 }} onClick={() => setExpandedBranchStatus({ branchId: g.id, status: 'interested' })}>
-                  <span>❤️ 有興趣待認</span>
-                  <strong>{heartCnt}</strong>
+                <div style={{cursor:'pointer', padding:'1px 4px', borderRadius:4, background:expandedBranchStatus?.branchId===g.id&&expandedBranchStatus.status==='interested'?'#fef7e0':'transparent'}} onClick={()=>setExpandedBranchStatus(expandedBranchStatus?.branchId===g.id&&expandedBranchStatus.status==='interested'?null:{branchId:g.id,status:'interested'})}>
+                  ❤️ 興趣：<strong style={{color:'#b06000'}}>{heart}</strong> 人
                 </div>
-                <div className="row" style={{ justifyContent: 'space-between', cursor: 'pointer', background: '#f8fafc', padding: '2px 6px', borderRadius: 4 }} onClick={() => setExpandedBranchStatus({ branchId: g.id, status: 'pending' })}>
-                  <span>⚠️ 尚未回覆</span>
-                  <strong>{pendCnt}</strong>
+                <div style={{cursor:'pointer', padding:'1px 4px', borderRadius:4, background:expandedBranchStatus?.branchId===g.id&&expandedBranchStatus.status==='pending'?'#f1f3f4':'transparent'}} onClick={()=>setExpandedBranchStatus(expandedBranchStatus?.branchId===g.id&&expandedBranchStatus.status==='pending'?null:{branchId:g.id,status:'pending'})}>
+                  ⚠️ 未覆：<strong>{pend}</strong> 人
                 </div>
-                <div className="row" style={{ justifyContent: 'space-between', cursor: 'pointer', background: '#f0f9ff', padding: '2px 6px', borderRadius: 4, marginTop: 2, borderTop: '1px solid #e2e8f0' }} onClick={() => setExpandedBranchStatus({ branchId: g.id, status: 'paid' })}>
-                  <span>💰 完成付款</span>
-                  <strong>{paidCnt}</strong>
+                <div style={{cursor:'pointer', borderTop: '1px solid #eee', paddingTop: 2, padding:'1px 4px', borderRadius:4, background:expandedBranchStatus?.branchId===g.id&&expandedBranchStatus.status==='paid'?'#e8f0fe':'transparent'}} onClick={()=>setExpandedBranchStatus(expandedBranchStatus?.branchId===g.id&&expandedBranchStatus.status==='paid'?null:{branchId:g.id,status:'paid'})}>
+                  💰 付款：<strong style={{color:'#1a73e8'}}>{paid}</strong> 人
                 </div>
               </div>
+              <button className="btn" style={{ fontSize: '0.78rem', padding: '4px 6px', marginTop: 'auto' }} onClick={() => { setExpandedGroup(isExp ? null : g.id); setExpandedBranchStatus(null); }}>
+                {isExp ? '🔼 收起名單' : `👁️ 全員名單 (${grpMembers.length})`}
+              </button>
             </div>
           );
         })}
       </div>
 
+      {/* 支部單項狀態展開 */}
       {expandedBranchStatus && (
-        <div className="card stack" style={{ background: '#fffef0', border: '2px solid #f9ab00', marginTop: 10 }}>
+        <div className="card stack" style={{ background: '#fffef0', border: `2px solid ${GROUP_DEFS.find(g=>g.id===expandedBranchStatus.branchId)?.color}`, marginTop: 8 }}>
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-            <strong style={{ fontSize: '1.05rem', color: '#b06000' }}>
-              📋 {GROUP_DEFS.find(g=>g.id===expandedBranchStatus.branchId)?.full} · {expandedBranchStatus.status==='registered'?'✅ 確定參加':expandedBranchStatus.status==='declined'?'❌ 婉拒不參加':expandedBranchStatus.status==='interested'?'❤️ 有興趣':expandedBranchStatus.status==='paid'?'💰 已付款':'⚠️ 尚未回覆'}名單：
+            <strong style={{ fontSize: '1.02rem', color: GROUP_DEFS.find(g=>g.id===expandedBranchStatus.branchId)?.color }}>
+              🔍 {GROUP_DEFS.find(g=>g.id===expandedBranchStatus.branchId)?.name} · {expandedBranchStatus.status==='registered'?'✅ 確定參加':expandedBranchStatus.status==='declined'?'❌ 婉拒不參加':expandedBranchStatus.status==='interested'?'❤️ 有興趣':expandedBranchStatus.status==='paid'?'💰 已完成付款':'⚠️ 尚未回覆'}名單：
             </strong>
             <button className="btn" onClick={() => setExpandedBranchStatus(null)}>✕ 關閉</button>
           </div>
-          <div className="row" style={{ flexWrap: 'wrap', gap: 6, maxHeight: 200, overflowY: 'auto', padding: 8, background: '#fff', borderRadius: 6 }}>
-            {unifiedTargets.filter(m => {
-              if (m.branchId !== expandedBranchStatus.branchId) return false;
-              const r = replyStatus(s, eventId, m.id);
-              if (expandedBranchStatus.status === 'paid') return getIsPaid(m.id);
-              if (expandedBranchStatus.status === 'registered') return r?.type === 'registered';
-              if (expandedBranchStatus.status === 'declined') return r?.type === 'declined';
-              if (expandedBranchStatus.status === 'interested') return r?.type === 'interested';
-              return !r?.type || (r.type as string) === 'unresponded';
-            }).map(m => (
-              <span key={m.id} className="badge" style={{ background: '#f8fafc', border: '1px solid #ccc', fontSize: '0.85rem' }}>
+          <div className="row" style={{ flexWrap: 'wrap', gap: 6, maxHeight: 180, overflowY: 'auto', padding: 8, background: '#fff', borderRadius: 6 }}>
+            {unifiedTargets.filter(m => m.branchId === expandedBranchStatus.branchId && (
+              expandedBranchStatus.status === 'paid' ? getIsPaid(m.id) :
+              expandedBranchStatus.status === 'registered' ? replyStatus(s, eventId, m.id)?.type === 'registered' :
+              expandedBranchStatus.status === 'declined' ? replyStatus(s, eventId, m.id)?.type === 'declined' :
+              expandedBranchStatus.status === 'interested' ? replyStatus(s, eventId, m.id)?.type === 'interested' :
+              (!replyStatus(s, eventId, m.id)?.type || (replyStatus(s, eventId, m.id)?.type as string) === 'unresponded')
+            )).map(m => (
+              <span key={m.id} className="badge" style={{ background: '#f8fafc', border: '1px solid #bbb', fontSize: '0.86rem' }}>
                 {m.name} {getIsPaid(m.id)?'💰':''}
               </span>
             ))}
           </div>
         </div>
       )}
+
+      {/* 支部整體展開 */}
+      {expandedGroup && (
+        <div className="card stack" style={{ background: '#fffef0', border: '2px solid #f9ab00', marginTop: 8 }}>
+          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <strong style={{ fontSize: '1.05rem' }}>📋 {GROUP_DEFS.find(g=>g.id===expandedGroup)?.full} · 全體名單與狀態：</strong>
+            <button className="btn" onClick={() => setExpandedGroup(null)}>✕ 關閉</button>
+          </div>
+          <div className="row" style={{ flexWrap: 'wrap', gap: 6, maxHeight: 220, overflowY: 'auto', padding: 8, background: '#fff', borderRadius: 6 }}>
+            {unifiedTargets.filter(m => m.branchId === expandedGroup).map(m => {
+              const r = replyStatus(s, eventId, m.id);
+              const st = r?.type;
+              const badgeStyle = st === 'registered' ? {background:'#e6f4ea',color:'#137333',border:'1px solid #ceead6'} : st === 'declined' ? {background:'#fce8e6',color:'#c5221f',border:'1px solid #fad2cf'} : st === 'interested' ? {background:'#fef7e0',color:'#b06000',border:'1px solid #feefc3'} : {background:'#f1f3f4',color:'#5f6368',border:'1px solid #ddd'};
+              return (
+                <span key={m.id} style={{ ...badgeStyle, padding: '4px 8px', borderRadius: 6, fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  {st === 'registered' ? '✅' : st === 'declined' ? '❌' : st === 'interested' ? '❤️' : '⚠️'} {m.name} {getIsPaid(m.id) ? '(💰已付)' : ''}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </section>
 
-    {/* 第二層：專屬兩大格童軍與幼童軍小隊報名統計 */}
+    {/* 3. 第二層：專屬兩大格童軍與幼童軍小隊報名統計 (名字+標示✅❌❤️⚠️💰，❤️可並存) */}
     <section className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 16 }}>
       {/* 幼童軍大格 */}
       <div className="card stack" style={{ borderTop: '5px solid #fbc02d', background: '#fff' }}>
@@ -426,17 +309,16 @@ function RegistrationsInner(){
                     pMembers.map(m => {
                       const r = replyStatus(s, eventId, m.id);
                       const isPaidCur = getIsPaid(m.id);
-                      const isChecked = checkInMap[m.id];
                       const st = r?.type;
                       const mainIcon = st === 'registered' ? '✅' : st === 'declined' ? '❌' : st === 'interested' ? '❤️' : '⚠️';
                       const hasHeart = st === 'interested' || ((r as any)?.notes && (r as any).notes.includes('有興趣')) || (st === 'registered' && (r as any)?.notes && (r as any).notes.includes('心'));
                       return (
                         <span key={m.id} style={{
                           padding: '3px 8px', borderRadius: 6, fontSize: '0.83rem',
-                          background: isChecked ? '#dcfce7' : st === 'registered' ? '#e6f4ea' : st === 'declined' ? '#fce8e6' : st === 'interested' ? '#fef7e0' : '#f1f3f4',
-                          border: isChecked ? '1px solid #16a34a' : '1px solid #ccc', display: 'inline-flex', alignItems: 'center', gap: 3
+                          background: st === 'registered' ? '#e6f4ea' : st === 'declined' ? '#fce8e6' : st === 'interested' ? '#fef7e0' : '#f1f3f4',
+                          border: '1px solid #ccc', display: 'inline-flex', alignItems: 'center', gap: 3
                         }}>
-                          {m.name} {mainIcon}{st !== 'interested' && hasHeart ? '❤️' : ''}{isPaidCur ? '💰' : ''}{isChecked ? '🟢' : ''}
+                          {m.name} {mainIcon}{st !== 'interested' && hasHeart ? '❤️' : ''}{isPaidCur ? '💰' : ''}
                         </span>
                       );
                     })
@@ -469,17 +351,16 @@ function RegistrationsInner(){
                     pMembers.map(m => {
                       const r = replyStatus(s, eventId, m.id);
                       const isPaidCur = getIsPaid(m.id);
-                      const isChecked = checkInMap[m.id];
                       const st = r?.type;
                       const mainIcon = st === 'registered' ? '✅' : st === 'declined' ? '❌' : st === 'interested' ? '❤️' : '⚠️';
                       const hasHeart = st === 'interested' || ((r as any)?.notes && (r as any).notes.includes('有興趣')) || (st === 'registered' && (r as any)?.notes && (r as any).notes.includes('心'));
                       return (
                         <span key={m.id} style={{
                           padding: '3px 8px', borderRadius: 6, fontSize: '0.83rem',
-                          background: isChecked ? '#dcfce7' : st === 'registered' ? '#e6f4ea' : st === 'declined' ? '#fce8e6' : st === 'interested' ? '#fef7e0' : '#f1f3f4',
-                          border: isChecked ? '1px solid #16a34a' : '1px solid #ccc', display: 'inline-flex', alignItems: 'center', gap: 3
+                          background: st === 'registered' ? '#e6f4ea' : st === 'declined' ? '#fce8e6' : st === 'interested' ? '#fef7e0' : '#f1f3f4',
+                          border: '1px solid #ccc', display: 'inline-flex', alignItems: 'center', gap: 3
                         }}>
-                          {m.name} {mainIcon}{st !== 'interested' && hasHeart ? '❤️' : ''}{isPaidCur ? '💰' : ''}{isChecked ? '🟢' : ''}
+                          {m.name} {mainIcon}{st !== 'interested' && hasHeart ? '❤️' : ''}{isPaidCur ? '💰' : ''}
                         </span>
                       );
                     })
@@ -492,10 +373,10 @@ function RegistrationsInner(){
       </div>
     </section>
 
-    {/* 最底名單：分成各支部、領袖、家長和總合共8個分頁方便匯出 */}
+    {/* 4. 最底名單：分成各支部、領袖、家長和總合共8個分頁方便匯出 */}
     <section className="card stack">
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-        <h3 style={{ margin: 0 }}>📋 出席、簽到與付款核對名單表 (共 8 個分頁對賬與 CSV 匯出)</h3>
+        <h3 style={{ margin: 0 }}>📋 出席與付款核對名單表 (共 8 個分頁快速對賬與 CSV 匯出)</h3>
         {modifiedCount > 0 && (
           <button className="btn primary" disabled={loadingBatch} style={{ background: '#2e7d32', borderColor: '#1b5e20' }} onClick={saveBatchPaid}>
             {loadingBatch ? '⏳ 批次同步寫入中...' : `💾 一鍵同步儲存 ${modifiedCount} 筆暫存付款`}
@@ -511,24 +392,16 @@ function RegistrationsInner(){
         })}
       </div>
 
-      <table className="table"><thead><tr><th>姓名</th><th>所屬單位</th><th>小隊/職務</th><th>現場簽到</th><th>線上報名狀態</th><th>緊急電話</th><th>付款核對</th><th>操作</th></tr></thead>
+      <table className="table"><thead><tr><th>姓名</th><th>所屬單位</th><th>小隊/職務</th><th>回覆出席狀態</th><th>緊急聯絡電話</th><th>付款核對</th><th>操作</th></tr></thead>
       <tbody>{displayTargets.map(m=>{
         const r=replyStatus(s,eventId,m.id);
         const p=s.patrols.find(x=>x.id===m.patrolId);
         const isPaidCur = getIsPaid(m.id);
-        const isChecked = !!checkInMap[m.id];
         const isChanged = paidOverrides[m.id] !== undefined;
-        return <tr key={m.id} style={isChecked ? { background: '#f0fdf4' } : isChanged ? { background: '#fffef0' } : {}}>
+        return <tr key={m.id} style={isChanged ? { background: '#fffef0' } : {}}>
           <td><strong>{m.name}</strong></td>
           <td><span className="badge blue">{GROUP_DEFS.find(g=>g.id===m.branchId)?.name || m.branchId}</span></td>
           <td>{m.isLeader ? '👔 領袖出席' : m.isParent ? '👨‍👩‍👧 家長出席' : (p?.name || '未分小隊')}</td>
-          <td>
-            {isChecked ? (
-              <span className="badge green" style={{ fontWeight: 'bold' }}>🟢 已現場簽到</span>
-            ) : (
-              <span className="badge" style={{ background: '#f1f3f4', color: '#555' }}>⚠️ 未簽到</span>
-            )}
-          </td>
           <td>
             {(() => {
               const st = r?.type;
@@ -541,15 +414,13 @@ function RegistrationsInner(){
           <td>{m.emergencyContactPhone||'—'}</td>
           <td>{isPaidCur?<span className="badge green" style={{fontWeight:'bold'}}>💰 已付款</span>:<span className="badge red" style={{fontWeight:'bold'}}>❌ 未付款</span>}</td>
           <td>
-            <button className={`btn ${isChecked ? 'red' : 'green'}`} style={{ fontSize: '0.82em' }} onClick={()=>toggleCheckIn(m.id)}>
-              {isChecked ? '✕ 取消簽到' : '📍 點名簽到'}
-            </button>{' '}
-            <button className={`btn ${isChanged ? 'gold' : ''}`} style={{ fontSize: '0.82em' }} onClick={()=>toggleLocalPaid(m.id)}>{isPaidCur ? '❌ 未付' : '💰 已付'}</button>
+            <button className={`btn ${isChanged ? 'gold' : ''}`} onClick={()=>toggleLocalPaid(m.id)}>{isPaidCur ? '❌ 取消已付款' : '💰 已付款'}</button>{' '}
+            <button className="btn" style={{fontSize:'0.82em'}} onClick={()=>togglePaid(m.id)}>單筆同步</button>
           </td>
         </tr>})}</tbody></table>
 
       <div className="row" style={{marginTop:8, justifyContent:'space-between'}}>
-        <button className="btn primary" onClick={csv}>📥 匯出當前頁簽 ({activeListTab === 'all' ? '全部總合' : GROUP_DEFS.find(g=>g.id===activeListTab)?.name}) 中文點名簽到 CSV</button>
+        <button className="btn primary" onClick={csv}>📥 匯出當前頁簽 ({activeListTab === 'all' ? '全部總合' : GROUP_DEFS.find(g=>g.id===activeListTab)?.name}) 中文 CSV</button>
         {modifiedCount > 0 && (
           <button className="btn primary" disabled={loadingBatch} style={{ background: '#2e7d32', borderColor: '#1b5e20' }} onClick={saveBatchPaid}>
             {loadingBatch ? '⏳ 批次同步寫入中...' : `💾 一鍵同步儲存 ${modifiedCount} 筆暫存付款`}

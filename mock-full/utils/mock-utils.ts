@@ -6,7 +6,7 @@ export function filterByBranch<T extends { branchId?: string }>(records: T[], br
 }
 
 export function countByStatus(records: MOCK_Attendance[]) {
-  const counts = { present: 0, excused: 0, registered: 0 };
+  const counts = { present: 0, absent: 0, late: 0, excused: 0, sick: 0 };
   for (const r of records) {
     if (r.status in counts) {
       counts[r.status]++;

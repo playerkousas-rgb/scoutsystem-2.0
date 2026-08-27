@@ -45,15 +45,16 @@ export default function MockFullPage() {
       <GroupStatsCard
         mode={mode}
         presentCount={stats.present}
-        excusedCount={stats.excused}
-        registeredCount={stats.registered}
+        absentCount={stats.absent}
+        lateCount={stats.late}
+        leaveCount={stats.excused + stats.sick}
         totalCount={totalCount}
       />
 
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
         {[
-          { id: 'events', label: '📍 現場簽到與點名卡片' },
+          { id: 'events', label: '📝 簽到／點名' },
           { id: 'members', label: '👥 成員名冊' },
           { id: 'announcements', label: '📢 最新通告' },
           { id: 'calendar', label: '🗓️ 行事曆' }
