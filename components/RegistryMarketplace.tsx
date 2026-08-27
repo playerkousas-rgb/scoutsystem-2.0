@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ROLE_LABEL, ROLE_ORDER, Role } from '@/lib/model';
 import { buildPluginUrl, fetchRegistry, Registry, REGISTRY_URL, resolvePlugins, ResolvedPlugin } from '@/lib/registry';
+import { isCoreNotPlugin } from '@/lib/attendance';
 import { getSession } from '@/lib/session';
 import { apiSavePluginSetting } from '@/lib/api';
 
@@ -50,8 +51,13 @@ export function MarketplacePage() {
       </section>
 
       {/* 元件列表 */}
+      <section className="card" style={{ borderLeft: '5px solid #7c3aed' }}>
+        <h3 style={{ marginTop: 0 }}>📝 簽到／點名已內建</h3>
+        <p className="muted" style={{ marginBottom: 0 }}>點名是主系統核心功能，不再作為第 3 級插件安裝或 iframe 嵌入。請到控制台「簽到／點名」卡片進入。</p>
+      </section>
+
       <section className="grid-wide">
-        {list.map(p => <PluginCard key={p.id} plugin={p} unitCode={unitCode} role={role} />)}
+        {list.filter(p => !isCoreNotPlugin(p.id)).map(p => <PluginCard key={p.id} plugin={p} unitCode={unitCode} role={role} />)}
       </section>
     </div>
   );
@@ -103,7 +109,7 @@ export function ConnectorPanel() {
     if (s?.role) setRole(s.role);
     fetchRegistry().then(r => setRegistry(r.registry));
   }, []);
-  const list = useMemo(() => registry ? resolvePlugins(registry, unitCode) : [], [registry, unitCode]);
+  const list = useMemo(() => registry ? resolvePlugins(registry, unitCode).filter(p => !isCoreNotPlugin(p.id)) : [], [registry, unitCode]);
   const session = getSession();
   return <div className="stack">
     <section className="card row" style={{ justifyContent: 'space-between' }}>

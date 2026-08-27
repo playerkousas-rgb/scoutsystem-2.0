@@ -34,7 +34,7 @@ var VISIBLE_SHEETS_FOR_BEGINNERS = [
 var ADVANCED_SHEETS = [
   'Roles', 'FieldSettings', 'Users', 'Applications',
   'Events', 'EventReplies', 'LibraryBookmarks', 'Announcements',
-  'RegularMeetings', 'CancelledMeetings', 'Notices', 'Plugins', 'UserPermissions', 'AuditLogs'
+  'RegularMeetings', 'CancelledMeetings', 'Notices', 'Plugins', 'UserPermissions', 'AttendanceRecords', 'AuditLogs'
 ];
 
 // ==================== 初始化 ====================
@@ -237,6 +237,9 @@ function getInitialSheets_() {
     ],
     PluginSettings: [
       ['pluginId', 'frontendUrl', 'backendUrl', 'apiKey', 'note']
+    ],
+    AttendanceRecords: [
+      ['recordId', 'memberId', 'ymNumber', 'name', 'branchId', 'patrolId', 'date', 'status', 'note', 'sessionType', 'eventId', 'markedBy', 'markedAt']
     ],
     AuditLogs: [
       ['logId', 'userId', 'action', 'entity', 'entityId', 'createdAt', 'detail']
@@ -833,6 +836,9 @@ function mapPlugins_() {
       embed: parseBool_(getField_(r, 'embed')), minRole: getField_(r, 'minRole'),
       enabled: parseBool_(getField_(r, 'enabled')), order: Number(getField_(r, 'order')) || 0
     };
+  }).filter(function (p) {
+    // 點名已內建，不再當成插件卡片回傳。
+    return p.id !== 'troop_attendance';
   });
 }
 
@@ -1118,15 +1124,15 @@ function buildDashboard(userId) {
 
 var FEATURE_DEFAULTS = {
   // admin 以上預設全部有
-  'admin': ['branches','members','applications','events','registrations','meetings','library_import','notices','users','permissions','settings','plugins','audit','calendar'],
-  'troop_super': ['branches','members','applications','events','registrations','meetings','library_import','notices','users','permissions','settings','plugins','audit','calendar'],
-  'super_admin': ['branches','members','applications','events','registrations','meetings','library_import','notices','users','permissions','settings','plugins','audit','calendar'],
+  'admin': ['branches','members','applications','events','registrations','attendance','meetings','library_import','notices','users','permissions','settings','plugins','audit','calendar'],
+  'troop_super': ['branches','members','applications','events','registrations','attendance','meetings','library_import','notices','users','permissions','settings','plugins','audit','calendar'],
+  'super_admin': ['branches','members','applications','events','registrations','attendance','meetings','library_import','notices','users','permissions','settings','plugins','audit','calendar'],
   // 團長：自己支部全部
-  'group_leader': ['members','applications','events','registrations','meetings','library_import','notices','calendar'],
+  'group_leader': ['members','applications','events','registrations','attendance','meetings','library_import','notices','calendar'],
   // 支部領袖：自己支部
-  'branch_leader': ['members','applications','events','registrations','meetings','library_import','notices','calendar'],
+  'branch_leader': ['members','applications','events','registrations','attendance','meetings','library_import','notices','calendar'],
   // 教練員：預設只有活動和圖書館
-  'coach': ['events','registrations','library_import','notices'],
+  'coach': ['events','registrations','attendance','library_import','notices'],
   // 家長和成員不需要管理卡片
   'parent': [],
   'member': []
@@ -1259,7 +1265,7 @@ function handleGetUserFeatures_(p) {
     overrides[getField_(pm, 'feature')] = String(getField_(pm, 'granted') || '').toLowerCase() === 'true';
   });
   
-  var allFeatures = ['branches','members','applications','events','registrations','library_import','notices','users','settings','audit','calendar'];
+  var allFeatures = ['branches','members','applications','events','registrations','attendance','library_import','notices','users','settings','audit','calendar'];
   var result = allFeatures.map(function(f) {
     var isDefault = defaults.indexOf(f) >= 0;
     var overridden = overrides[f] !== undefined;
@@ -1382,6 +1388,10 @@ function doGet(e) {
       case 'publishMeeting': return wrap_(handlePublishMeeting_(p), p);
       case 'updateUserPermissions': return wrap_(handleUpdateUserPermissions_(p), p);
       case 'updateUserField': return wrap_(handleUpdateUserField_(p), p);
+      case 'getAttendance': return json(handleGetAttendance_(p));
+      case 'saveAttendance': return json(handleSaveAttendance_(p));
+      case 'getAttendanceMatrix': return json(handleGetAttendanceMatrix_(p));
+      case 'getMemberAttendance': return json(handleGetMemberAttendance_(p));
 
       default:
         return json({ success: false, error: '未知 action: ' + action });
@@ -2361,7 +2371,10 @@ function handleSaveConfig_(p) {
 function handleSavePluginSetting_(p) {
   var pluginId = p.pluginId;
   if (!pluginId) return { success: false, error: 'Missing pluginId' };
-  
+  if (pluginId === 'troop_attendance') {
+    return { success: false, error: '簽到／點名已是主系統內建功能，不需再安裝為插件。' };
+  }
+
   var existing = findRowIndexById_('PluginSettings', 'pluginId', pluginId);
   var fields = {
     pluginId: pluginId,
@@ -3010,4 +3023,296 @@ function handleUpdatePdfTags_(p) {
   }
   writeAudit_(p.operatedBy || 'system', 'updatePdfTags', 'Announcements', fileId, p.status || '');
   return { success: true };
+}
+
+// ==================== 簽到／點名（內建核心功能） ====================
+
+function ensureAttendanceSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var headers = ['recordId', 'memberId', 'ymNumber', 'name', 'branchId', 'patrolId', 'date', 'status', 'note', 'sessionType', 'eventId', 'markedBy', 'markedAt'];
+  var sh = ss.getSheetByName('AttendanceRecords');
+  if (!sh) {
+    sh = ss.insertSheet('AttendanceRecords');
+    sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sh.getRange(1, 1, 1, headers.length).setFontWeight('bold').setFontColor('white').setBackground('#5f6368');
+    sh.setFrozenRows(1);
+    sh.setTabColor(SHEET_COLORS.system);
+    try { sh.hideSheet(); } catch (e) {}
+    return sh;
+  }
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var existing = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) { return String(h || '').trim(); });
+  headers.forEach(function (h) {
+    if (existing.indexOf(h) < 0) {
+      sh.getRange(1, sh.getLastColumn() + 1).setValue(h);
+      existing.push(h);
+    }
+  });
+  return sh;
+}
+
+function attendanceRecordId_(memberId, date, sessionType, eventId) {
+  return String(memberId || '') + '_' + String(date || '') + '_' + String(sessionType || 'meeting') + '_' + (eventId || 'meeting');
+}
+
+function resolveAttendanceCaller_(p) {
+  var userId = p.operatedBy || p.userId || '';
+  if (!userId) return null;
+  if (TECH_TEST_ACCOUNTS_.indexOf(userId) >= 0 || userId === 'staff_token') {
+    return { userId: userId, role: 'super_admin', branchId: '', memberId: '', childMemberIds: [] };
+  }
+  var users = mapUsers_();
+  var user = users.filter(function (u) { return u.id === userId; })[0];
+  if (user) {
+    return { userId: user.id, role: user.role, branchId: user.branchId || '', memberId: user.memberId || '', childMemberIds: user.childMemberIds || [] };
+  }
+  var members = mapMembers_();
+  var member = members.filter(function (m) { return m.id === userId; })[0];
+  if (member) {
+    return { userId: member.id, role: 'member', branchId: member.branchId || '', memberId: member.id, childMemberIds: [] };
+  }
+  return null;
+}
+
+function canMarkAttendance_(caller) {
+  if (!caller) return false;
+  return ['super_admin', 'troop_super', 'admin', 'group_leader', 'branch_leader', 'coach'].indexOf(caller.role) >= 0;
+}
+
+function patrolNameById_(patrols, patrolId) {
+  var found = patrols.filter(function (p) { return p.id === patrolId; })[0];
+  return found ? (found.name || '') : '';
+}
+
+function scopedAttendanceBranch_(caller, requestedBranch) {
+  if (!caller) return { error: '請先登入' };
+  if (['super_admin', 'troop_super', 'admin'].indexOf(caller.role) >= 0) return { branchId: requestedBranch || '' };
+  if (['group_leader', 'branch_leader', 'coach'].indexOf(caller.role) >= 0) {
+    if (requestedBranch && caller.branchId && requestedBranch !== caller.branchId) {
+      return { error: '只能處理自己支部的點名' };
+    }
+    return { branchId: caller.branchId || requestedBranch || '' };
+  }
+  return { error: '只有領袖可以點名' };
+}
+
+function handleGetAttendance_(p) {
+  ensureAttendanceSheet_();
+  var caller = resolveAttendanceCaller_(p);
+  var date = fmtDate_(p.date || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { success: false, error: '請提供正確日期（YYYY-MM-DD）' };
+  var sessionType = p.sessionType === 'activity' ? 'activity' : 'meeting';
+  var eventId = String(p.eventId || '');
+  var scope = scopedAttendanceBranch_(caller, p.branchId || '');
+  if (scope.error) return { success: false, error: scope.error };
+  var branchId = scope.branchId;
+  if (!branchId) return { success: false, error: '請選擇支部' };
+
+  var members = mapMembers_().filter(function (m) {
+    if (!m.active) return false;
+    return m.branchId === branchId;
+  });
+  if (sessionType === 'activity' && eventId) {
+    var events = mapEvents_();
+    var event = events.filter(function (e) { return e.id === eventId; })[0];
+    if (event && event.targetMemberIds && event.targetMemberIds.length) {
+      members = members.filter(function (m) { return event.targetMemberIds.indexOf(m.id) >= 0; });
+    }
+  }
+
+  var patrols = mapPatrols_();
+  var rows = readTable_('AttendanceRecords').filter(function (r) {
+    return fmtDate_(getField_(r, 'date')) === date &&
+      String(getField_(r, 'branchId')) === branchId &&
+      String(getField_(r, 'sessionType') || 'meeting') === sessionType &&
+      String(getField_(r, 'eventId') || '') === eventId;
+  });
+  var byMember = {};
+  rows.forEach(function (r) { byMember[String(getField_(r, 'memberId'))] = r; });
+
+  var roster = members.map(function (m) {
+    var rec = byMember[m.id];
+    return {
+      memberId: m.id,
+      ymNumber: m.ymNumber || '',
+      name: m.name,
+      branchId: m.branchId,
+      patrolId: m.patrolId || '',
+      patrolName: patrolNameById_(patrols, m.patrolId),
+      status: rec ? String(getField_(rec, 'status') || '') : '',
+      note: rec ? String(getField_(rec, 'note') || '') : '',
+      recordId: rec ? String(getField_(rec, 'recordId') || '') : ''
+    };
+  });
+
+  var summary = { P: 0, A: 0, L: 0, E: 0, S: 0, blank: 0, total: roster.length };
+  roster.forEach(function (item) {
+    if (summary[item.status] !== undefined && item.status) summary[item.status]++;
+    else summary.blank++;
+  });
+
+  return { success: true, date: date, branchId: branchId, sessionType: sessionType, eventId: eventId, roster: roster, summary: summary };
+}
+
+function handleSaveAttendance_(p) {
+  ensureAttendanceSheet_();
+  var caller = resolveAttendanceCaller_(p);
+  if (!canMarkAttendance_(caller)) return { success: false, error: '只有領袖或管理員可以儲存點名' };
+  var date = fmtDate_(p.date || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { success: false, error: '請提供正確日期（YYYY-MM-DD）' };
+  var sessionType = p.sessionType === 'activity' ? 'activity' : 'meeting';
+  var eventId = String(p.eventId || '');
+  var scope = scopedAttendanceBranch_(caller, p.branchId || '');
+  if (scope.error) return { success: false, error: scope.error };
+  var branchId = scope.branchId;
+  var records = parseRowsParam_(p.records);
+  if (!records.length) return { success: false, error: '沒有可儲存的點名紀錄' };
+  if (records.length > 500) return { success: false, error: '一次最多儲存 500 筆' };
+
+  var allowed = { P: 1, A: 1, L: 1, E: 1, S: 1 };
+  var saved = 0;
+  records.forEach(function (raw) {
+    var memberId = String(raw.memberId || '').trim();
+    var status = String(raw.status || '').trim().toUpperCase();
+    if (!memberId || !allowed[status]) return;
+    var recordId = attendanceRecordId_(memberId, date, sessionType, eventId);
+    var fields = {
+      recordId: recordId,
+      memberId: memberId,
+      ymNumber: String(raw.ymNumber || ''),
+      name: String(raw.name || ''),
+      branchId: branchId,
+      patrolId: String(raw.patrolId || ''),
+      date: date,
+      status: status,
+      note: String(raw.note || ''),
+      sessionType: sessionType,
+      eventId: eventId,
+      markedBy: caller.userId,
+      markedAt: now_()
+    };
+    var idx = findRowIndexById_('AttendanceRecords', 'recordId', recordId);
+    if (idx >= 0) {
+      Object.keys(fields).forEach(function (k) {
+        updateCellByName_('AttendanceRecords', 'recordId', recordId, k, fields[k]);
+      });
+    } else {
+      appendRowByHeaders_('AttendanceRecords', fields);
+    }
+    saved++;
+  });
+  writeAudit_(caller.userId, 'saveAttendance', 'AttendanceRecords', branchId + ' ' + date, 'saved=' + saved + ' type=' + sessionType);
+  return { success: true, saved: saved, date: date, branchId: branchId, sessionType: sessionType, eventId: eventId };
+}
+
+function handleGetAttendanceMatrix_(p) {
+  ensureAttendanceSheet_();
+  var caller = resolveAttendanceCaller_(p);
+  var scope = scopedAttendanceBranch_(caller, p.branchId || '');
+  if (scope.error) return { success: false, error: scope.error };
+  var branchId = scope.branchId;
+  var sessionType = p.sessionType === 'activity' ? 'activity' : 'meeting';
+  var patrolId = String(p.patrolId || '');
+  var days = parseInt(p.days, 10);
+  if (!days || days < 1) days = 30;
+  if (days > 90) days = 90;
+
+  var members = mapMembers_().filter(function (m) {
+    if (!m.active) return false;
+    if (m.branchId !== branchId) return false;
+    if (patrolId && m.patrolId !== patrolId) return false;
+    return true;
+  });
+  var patrols = mapPatrols_();
+  var rows = readTable_('AttendanceRecords').filter(function (r) {
+    return String(getField_(r, 'branchId')) === branchId &&
+      String(getField_(r, 'sessionType') || 'meeting') === sessionType;
+  });
+  var dateSet = {};
+  rows.forEach(function (r) {
+    var d = fmtDate_(getField_(r, 'date'));
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) dateSet[d] = true;
+  });
+  var dates = Object.keys(dateSet).sort();
+  if (dates.length > days) dates = dates.slice(dates.length - days);
+
+  var recMap = {};
+  rows.forEach(function (r) {
+    recMap[String(getField_(r, 'memberId')) + '|' + fmtDate_(getField_(r, 'date'))] = String(getField_(r, 'status') || '');
+  });
+
+  var headers = ['YMIS號', '姓名', '支部', '小隊'].concat(dates);
+  var outRows = members.map(function (m) {
+    var obj = {
+      'YMIS號': m.ymNumber || '',
+      '姓名': m.name || '',
+      '支部': m.branchId || '',
+      '小隊': patrolNameById_(patrols, m.patrolId)
+    };
+    dates.forEach(function (d) {
+      obj[d] = recMap[m.id + '|' + d] || '';
+    });
+    return obj;
+  });
+  return { success: true, headers: headers, rows: outRows, branchId: branchId, sessionType: sessionType };
+}
+
+function handleGetMemberAttendance_(p) {
+  ensureAttendanceSheet_();
+  var caller = resolveAttendanceCaller_(p);
+  if (!caller) return { success: false, error: '請先登入' };
+
+  var members = mapMembers_();
+  var target = null;
+  if (p.memberId) target = members.filter(function (m) { return m.id === p.memberId; })[0];
+  if (!target && p.ymNumber) target = members.filter(function (m) { return String(m.ymNumber) === String(p.ymNumber); })[0];
+  if (!target && p.name) target = members.filter(function (m) { return m.name === p.name; })[0];
+  if (!target && caller.role === 'member') target = members.filter(function (m) { return m.id === caller.memberId || m.id === caller.userId; })[0];
+
+  if (!target) return { success: false, error: '找不到該成員' };
+
+  if (caller.role === 'member' && target.id !== caller.memberId && target.id !== caller.userId) {
+    return { success: false, error: '只能查看自己的出席紀錄' };
+  }
+  if (caller.role === 'parent') {
+    var allowed = (caller.childMemberIds || []).indexOf(target.id) >= 0 || target.parentUserId === caller.userId;
+    if (!allowed) return { success: false, error: '只能查看自己子女的出席紀錄' };
+  }
+  if (['group_leader', 'branch_leader', 'coach'].indexOf(caller.role) >= 0) {
+    if (caller.branchId && target.branchId !== caller.branchId) {
+      return { success: false, error: '只能查看自己支部成員的出席紀錄' };
+    }
+  }
+
+  var patrols = mapPatrols_();
+  var dates = {};
+  var stats = { P: 0, A: 0, L: 0, E: 0, S: 0, blank: 0, total: 0 };
+  readTable_('AttendanceRecords').forEach(function (r) {
+    if (String(getField_(r, 'memberId')) !== target.id) return;
+    var d = fmtDate_(getField_(r, 'date'));
+    var status = String(getField_(r, 'status') || '');
+    dates[d] = {
+      status: status,
+      note: String(getField_(r, 'note') || ''),
+      sessionType: String(getField_(r, 'sessionType') || 'meeting'),
+      eventId: String(getField_(r, 'eventId') || '')
+    };
+    if (stats[status] !== undefined && status) stats[status]++;
+    else stats.blank++;
+    stats.total++;
+  });
+
+  return {
+    success: true,
+    record: {
+      memberId: target.id,
+      ymNumber: target.ymNumber || '',
+      name: target.name,
+      branchId: target.branchId,
+      patrolId: target.patrolId || '',
+      patrolName: patrolNameById_(patrols, target.patrolId),
+      dates: dates,
+      stats: stats
+    }
+  };
 }

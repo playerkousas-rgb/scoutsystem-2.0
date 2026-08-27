@@ -317,3 +317,76 @@ export async function apiListAnnouncementPdfs() {
 export function apiUpdatePdfTags(p: { fileId: string; branchTags?: string; audienceTags?: string; status?: string; note?: string }) {
   return apiMutate('updatePdfTags', p);
 }
+
+// ==================== 簽到／點名（內建） ====================
+
+export async function apiGetAttendance(p: {
+  branchId: string;
+  date: string;
+  sessionType?: string;
+  eventId?: string;
+}) {
+  const user = currentUser();
+  return apiGet('getAttendance', {
+    branchId: p.branchId,
+    date: p.date,
+    sessionType: p.sessionType || 'meeting',
+    eventId: p.eventId || '',
+    userId: user?.userId || '',
+  });
+}
+
+export async function apiSaveAttendance(p: {
+  branchId: string;
+  date: string;
+  sessionType?: string;
+  eventId?: string;
+  records: Array<{
+    memberId: string;
+    ymNumber?: string;
+    name?: string;
+    patrolId?: string;
+    status: string;
+    note?: string;
+  }>;
+}) {
+  return withSubmissionLock('saveAttendance', async () => {
+    const user = currentUser();
+    return apiPost('saveAttendance', {
+      ...p,
+      sessionType: p.sessionType || 'meeting',
+      eventId: p.eventId || '',
+      operatedBy: user?.userId || 'system',
+    });
+  });
+}
+
+export async function apiGetAttendanceMatrix(p: {
+  branchId: string;
+  days?: number;
+  sessionType?: string;
+  patrolId?: string;
+}) {
+  const user = currentUser();
+  return apiGet('getAttendanceMatrix', {
+    branchId: p.branchId,
+    days: String(p.days || 30),
+    sessionType: p.sessionType || 'meeting',
+    patrolId: p.patrolId || '',
+    userId: user?.userId || '',
+  });
+}
+
+export async function apiGetMemberAttendance(p?: {
+  memberId?: string;
+  ymNumber?: string;
+  name?: string;
+}) {
+  const user = currentUser();
+  return apiGet('getMemberAttendance', {
+    memberId: p?.memberId || '',
+    ymNumber: p?.ymNumber || '',
+    name: p?.name || '',
+    userId: user?.userId || '',
+  });
+}

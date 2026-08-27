@@ -2,6 +2,8 @@
 
 本系統把「實際出席點名」與「活動報名」視為兩個獨立功能，不共用卡片、頁面或狀態。
 
+點名是 **主系統內建核心功能**，不是第 3 級插件，也不用 iframe 嵌入外部 `troop-attendance`。
+
 ## 功能邊界
 
 | 功能 | 適用項目 | 主要資料 |
@@ -20,25 +22,27 @@
 
 - 管理員控制台：獨立顯示「簽到／點名」和「報名管理」兩張卡片。
 - 領袖控制台：獨立顯示兩張卡片。
+- 家長控制台：顯示「簽到／點名」卡片，供查看子女出席紀錄。
 - 成員控制台：顯示「簽到／點名」卡片，供查看個人出席紀錄。
 - `/admin/registrations`：只處理活動報名、付款、統計及 CSV。
-- `/attendance`：只接入集會點名元件。
+- `/attendance`：主系統內建點名頁（點名表、矩陣、成員歷史）。
 
-## troop-attendance Tier 3 接入
+## 資料與權限
 
-點名介面依照 [`playerkousas-rgb/troop-attendance`](https://github.com/playerkousas-rgb/troop-attendance) 的雙軌／Tier 3 合約接入：
+- 點名寫入本旅團 Google Sheet 的 `AttendanceRecords`。
+- 報名管理繼續使用 `Events` 及 `EventReplies`。兩套資料不可互相代替。
+- 領袖／管理員可為所屬支部點名並儲存。
+- 成員只能查看自己的出席紀錄。
+- 家長只能查看自己子女的出席紀錄。
+- 不會把報名回覆、付款狀態、主系統 GAS URL 或 API key 交給任何外部點名網站。
 
-```text
-https://troop-attendance.vercel.app/?u=82&role=leader&ymis=USER_ID&name=領袖姓名&from=portal&embed=1
-```
+## API
 
-主系統會：
+| action | 用途 |
+|---|---|
+| `getAttendance` | 載入指定日期／支部／集會或活動的點名表 |
+| `saveAttendance` | 批次寫入 P／A／L／E／S |
+| `getAttendanceMatrix` | 最近 7／14／30／60 次出席矩陣 |
+| `getMemberAttendance` | 單一成員歷史出席 |
 
-- 將 `0082` 等主系統旅團號正規化成點名元件 Registry 使用的 `82`。
-- 將 `coach`、`branch_leader`、`group_leader` 映射為 `leader`。
-- 將 `troop_super`、`super_admin` 映射為 `admin`。
-- 成員進入時以成員資料中的 YMIS 作身份參數。
-- 傳送 `name`、`from=portal` 及 `embed=1`，並提供新視窗備用入口。
-- **不會**把報名回覆、付款狀態、主系統 GAS URL 或 API key 放入點名元件 URL。
-
-點名元件使用自己每旅團的 `AttendanceRecords` 後端；主系統報名管理繼續使用 `Events` 及 `EventReplies`。兩套資料不可互相代替。
+唯一鍵：`memberId + date + sessionType + eventId`（日常集會的 eventId 為空）。

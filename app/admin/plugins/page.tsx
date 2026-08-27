@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { AppState, loadState, PluginCard, PluginSetting } from '@/lib/store';
 import { apiSavePluginSetting, apiTogglePluginStatus } from '@/lib/api';
 import Auth from '@/components/Auth';
+import { isCoreNotPlugin } from '@/lib/attendance';
 
 export default function PluginManagementPage() {
   const [s, setS] = useState<AppState | null>(null);
@@ -62,10 +63,10 @@ export default function PluginManagementPage() {
         {ok && <p className="badge green">{ok}</p>}
 
         <section className="stack">
-          {s.plugins.length === 0 ? (
-            <div className="card"><p className="muted">尚未安裝任何擴充元件。請先到「元件市場」查看。</p></div>
+          {s.plugins.filter(p => !isCoreNotPlugin(p.id)).length === 0 ? (
+            <div className="card"><p className="muted">尚未安裝任何擴充元件。請先到「元件市場」查看。簽到／點名已內建，無需在此安裝。</p></div>
           ) : (
-            s.plugins.map(p => {
+            s.plugins.filter(p => !isCoreNotPlugin(p.id)).map(p => {
               const setting = s.pluginSettings?.find(ps => ps.pluginId === p.id);
               return (
                 <div key={p.id} className="card stack" style={{ borderLeft: p.enabled ? '4px solid #34a853' : '4px solid #ea4335' }}>

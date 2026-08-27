@@ -4,6 +4,7 @@ import { AppState, loadState, replyStatus } from '@/lib/store';
 import { apiSetReply } from '@/lib/api';
 import { getSession } from '@/lib/session';
 import Collapsible from '@/components/Collapsible';
+import AttendanceCard from '@/components/AttendanceCard';
 import Link from 'next/link';
 
 export default function Parent(){
@@ -38,6 +39,10 @@ export default function Parent(){
       <section className="hero">
         <span className="badge gold">家長控制台</span>
         <p>管理子女活動報名與資訊。</p>
+      </section>
+
+      <section className="grid">
+        <AttendanceCard description="查看子女在日常集會及旅團自辦活動的出席紀錄。點名與活動報名分開處理。" />
       </section>
       
       {err&&<p className="badge red">{err}</p>}
