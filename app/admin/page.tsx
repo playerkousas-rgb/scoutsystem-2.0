@@ -12,7 +12,7 @@ const FEATURE_DEFS: Record<string,{title:string;icon:string;text:string;href:str
   members:        { title:'成員資料庫', icon:'👥', text:'新增、編輯、連結家長。', href:'/admin/members' },
   applications:   { title:'審核 / 申請管理', icon:'✅', text:'審核申請，批核後自動建帳號。', href:'/admin/applications' },
   events:         { title:'活動管理', icon:'🗓️', text:'新增、編輯、發布活動。', href:'/admin/events' },
-  registrations:  { title:'報名管理', icon:'📋', text:'報名狀態、付款、匯出。', href:'/admin/registrations' },
+  registrations:  { title:'點名簽到與報名管理', icon:'📍', text:'現場點名簽到卡片、考勤對賬與 CSV 匯出。', href:'/admin/registrations' },
   meetings:       { title:'會議管理', icon:'🤝', text:'會議議程及紀錄。', href:'/admin/meetings' },
   library_import: { title:'圖書館引入', icon:'📚', text:'由通告圖書館引入。', href:'/library/import' },
   notices:        { title:'通告管理', icon:'📄', text:'上傳通告、Drive PDF。', href:'/notices' },

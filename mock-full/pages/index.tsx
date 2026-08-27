@@ -53,7 +53,7 @@ export default function MockFullPage() {
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
         {[
-          { id: 'events', label: '🚩 活動與考勤' },
+          { id: 'events', label: '📍 現場簽到與點名卡片' },
           { id: 'members', label: '👥 成員名冊' },
           { id: 'announcements', label: '📢 最新通告' },
           { id: 'calendar', label: '🗓️ 行事曆' }
