@@ -1,0 +1,33 @@
+/* mock-attendance.css - reference stylesheet for MOCK preview */
+
+.mock-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  margin-bottom: 12px;
+}
+
+.mock-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mock-badge-present {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.mock-badge-excused {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.mock-badge-registered {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
