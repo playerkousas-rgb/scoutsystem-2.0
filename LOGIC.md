@@ -96,8 +96,9 @@ Users.childMemberIds = ['m1','m2'] → 這個家長的子女（前端從 Members
 
 **與點名的邊界**：
 - 活動建立及報名回覆進入 `/admin/registrations`，包括旅團自辦及外間活動。
-- 日常集會不屬於活動報名，使用獨立 `/attendance` 點名元件。
+- 日常集會不屬於活動報名，使用主系統內建 `/attendance` 點名頁。
 - 旅團自辦活動可在活動前收集報名，活動當日再到 `/attendance` 記錄實際出席；兩者不共用狀態。
+- 點名不是插件，也不 iframe 外部 `troop-attendance`。資料寫入 `AttendanceRecords`。
 
 **建立方式**：
 1. 管理員在 `/admin/events` 手動新增
@@ -233,6 +234,7 @@ public/downloads/SCOUTSYSTEM_2_SETUP.gs.txt  （下載用副本）
 | CancelledMeetings | 取消集會 | 灰 | 隱藏 |
 | Notices | 通告 | 灰 | 隱藏 |
 | Plugins | 插件 | 灰 | 隱藏 |
+| AttendanceRecords | 簽到／點名（內建） | 灰 | 隱藏 |
 | AuditLogs | 操作紀錄 | 紅 | 隱藏 |
 
 ### 5.2.1 API Key 認證（SHA-256 Hash + Proxy）
@@ -284,6 +286,9 @@ public/downloads/SCOUTSYSTEM_2_SETUP.gs.txt  （下載用副本）
 | `getDashboard` | userId | **核心**：按角色回傳 AppState |
 | `getApplications` | userId | 申請列表（按角色過濾） |
 | `getEventRegistrationSummary` | eventId, userId | 報名摘要（含小隊統計） |
+| `getAttendance` | userId, branchId, date, sessionType, eventId | 當日點名表 |
+| `getAttendanceMatrix` | userId, branchId, days, sessionType, patrolId | 出席矩陣 |
+| `getMemberAttendance` | userId, memberId / ymNumber / name | 成員出席歷史 |
 
 #### 寫入：帳號 / 密碼
 
@@ -313,6 +318,7 @@ public/downloads/SCOUTSYSTEM_2_SETUP.gs.txt  （下載用副本）
 | `setReply` | eventId, memberId, type, parentUserId | 設定回覆（含18歲guard） |
 | `cancelReply` | eventId, memberId | 取消回覆（軟刪除） |
 | `togglePaid` | eventId, memberId | 切換付款狀態 |
+| `saveAttendance` | branchId, date, sessionType, eventId, records | 批次儲存點名（不走 wrap_） |
 
 #### 寫入：申請
 

@@ -1,4 +1,5 @@
 import { Role } from './model';
+import { isCoreNotPlugin } from './attendance';
 
 export const REGISTRY_URL = 'https://troop-router.vercel.app/api/registry.json';
 
@@ -85,7 +86,7 @@ function mapHubRoleToMinRole(roles?: string[]): Role {
 export function resolvePlugins(registry: Registry, unitCode: string): ResolvedPlugin[] {
   const normalizedUnit = unitCode.replace(/^0+/, '') || unitCode;
   const unit = registry.units.find(u => u.id === unitCode || u.id === normalizedUnit);
-  return registry.plugins.filter(p => p.status !== 'disabled').map(p => {
+  return registry.plugins.filter(p => p.status !== 'disabled' && !isCoreNotPlugin(p.id)).map(p => {
     const endpoint = unit?.endpoints?.[p.id] || '';
     const resolvedUrl = p.tier === 3 ? endpoint : p.url;
     return {

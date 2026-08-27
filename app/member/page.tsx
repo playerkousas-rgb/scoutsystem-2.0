@@ -26,7 +26,7 @@ export default function Member(){
   
   // Filter plugins by role and branch if needed
   const visiblePlugins = s.plugins.filter(p => {
-    // troop-attendance 已由固定的獨立點名卡片提供，避免安裝後重複顯示。
+    // 點名已內建，避免舊 Plugins 表紀錄重複顯示。
     if (p.id === 'troop_attendance') return false;
     // Example: vs_badge_tracker only for Venture (b4)
     if (p.id === 'vs_badge_tracker' && member.branchId !== 'b4') return false;

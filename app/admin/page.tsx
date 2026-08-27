@@ -14,6 +14,7 @@ const FEATURE_DEFS: Record<string,{title:string;icon:string;text:string;href:str
   applications:   { title:'審核 / 申請管理', icon:'✅', text:'審核申請，批核後自動建帳號。', href:'/admin/applications' },
   events:         { title:'活動管理', icon:'🗓️', text:'新增、編輯、發布活動。', href:'/admin/events' },
   registrations:  { title:'報名管理', icon:'📋', text:'旅團及外間活動的報名狀態、付款與匯出。', href:'/admin/registrations' },
+  attendance:     { title:'簽到／點名', icon:'📝', text:'日常集會及旅團自辦活動的實際出席（P／A／L／E／S）。', href:'/attendance' },
   meetings:       { title:'會議管理', icon:'🤝', text:'會議議程及紀錄。', href:'/admin/meetings' },
   library_import: { title:'圖書館引入', icon:'📚', text:'由通告圖書館引入。', href:'/library/import' },
   notices:        { title:'通告管理', icon:'📄', text:'上傳通告、Drive PDF。', href:'/notices' },
@@ -40,6 +41,8 @@ export default function Admin(){
     return features.map(f=>{
       const def=FEATURE_DEFS[f];
       if(!def) return null;
+      // 點名有專用卡片，避免與內建 AttendanceCard 重複。
+      if(f === 'attendance') return null;
       return <FeatureCard key={f} title={def.title} icon={def.icon} text={def.text} href={def.href}/>;
     }).filter(Boolean);
   }
